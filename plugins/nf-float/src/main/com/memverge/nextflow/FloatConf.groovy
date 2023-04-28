@@ -5,6 +5,7 @@ package com.memverge.nextflow
 
 import groovy.transform.CompileStatic
 import nextflow.exception.AbortOperationException
+import nextflow.util.MemoryUnit
 import org.apache.commons.lang.StringUtils
 
 /**
@@ -15,12 +16,12 @@ class FloatConf {
     /** credentials for op center */
     String username
     String password
-    String address
+    Collection<String> addresses
     String nfs
 
     /** parameters for submitting the tasks */
     String cpu = '2'
-    String memGB = '4'
+    MemoryUnit memGB = MemoryUnit.of('4 GB')
     String image = 'cactus'
     String commonExtra
 
@@ -41,21 +42,38 @@ class FloatConf {
             Map node = ((Map) config.float)
             ret.username = node.username
             ret.password = node.password
-            ret.address = node.address
+            ret.addresses = node.address.toString()
+                    .split(",")
+                    .toList()
+                    .stream()
+                    .filter { it.size() > 0 }
+                    .map { it.trim() }
+                    .collect()
             ret.commonExtra = node.commonExtra
             ret.nfs = node.nfs
             if (node.cpu) {
                 ret.cpu = node.cpu as String
             }
+            if (node.cpus) {
+                ret.cpu = node.cpus as String
+            }
             if (node.mem) {
-                ret.memGB = node.mem as String
+                def unit = "${node.mem as String} GB"
+                ret.memGB = MemoryUnit.of(unit)
+            }
+            if (node.memory) {
+                ret.memGB = MemoryUnit.of(node.memory as String)
             }
             if (node.image) {
                 ret.image = node.image as String
             }
+            if (node.container) {
+                ret.image = node.container as String
+            }
         }
         return ret
     }
+
 
     void validate() {
         if (!username) {
@@ -64,23 +82,30 @@ class FloatConf {
         if (!password) {
             throw new AbortOperationException("missing MMCE password")
         }
-        if (!address) {
+        if (addresses.size() == 0) {
             throw new AbortOperationException("missing MMCE OC address")
         }
     }
 
-    String getCli() {
+    List<String> getCliPrefix(String address = "") {
+        if (StringUtils.length(address) == 0) {
+            address = addresses[0]
+        }
         List<String> ret = [
                 "float",
-                "--address",
+                "-a",
                 address,
-                "--username",
+                "-u",
                 username,
-                "--password",
+                "-p",
                 password
         ]
-        return StringUtils.join(ret, " ")
+        return ret
     }
 
-    def cmdTimeoutMS() {cmdTimeoutSeconds * 1000}
+    String getCli(String address = "") {
+        return getCliPrefix(address).join(" ")
+    }
+
+    def cmdTimeoutMS() { cmdTimeoutSeconds * 1000 }
 }

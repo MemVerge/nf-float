@@ -98,26 +98,39 @@ class CmdResultTest extends Specification {
 
         when:
         res.out = """
-[
-    {
-        "id": "QPj8nsNWfLam6VQWbeGnp",                                                                                           
-        "name": "cactus-c5d.large",                                                                                              
-        "user": "admin",                                                                                                         
-        "imageID": "docker.io/memverge/cactus:latest",                                                                           
-        "status": "FailToExecute"                                                                                                                                                                                                                                                                                                                         
-    },
-    {
-        "id": "u5x3sSLe0p3OznGavmYu3",
-        "name": "cactus-t3a.medium",
-        "workingHost": "3.143.251.235 (2Core4GB/Spot)",
-        "user": "admin",
-        "imageID": "docker.io/memverge/cactus:latest",
-        "status": "Executing"
-    }
-]"""
-        then:
+        [
+            {
+                "id": "QPj8nsNWfLam6VQWbeGnp",                                                                                           
+                "name": "cactus-c5d.large",                                                                                              
+                "user": "admin",                                                                                                         
+                "imageID": "docker.io/memverge/cactus:latest",                                                                           
+                "status": "FailToExecute"                                                                                                                                                                                                                                                                                                                         
+            },
+            {
+                "id": "u5x3sSLe0p3OznGavmYu3",
+                "name": "cactus-t3a.medium",
+                "workingHost": "3.143.251.235 (2Core4GB/Spot)",
+                "user": "admin",
+                "imageID": "docker.io/memverge/cactus:latest",
+                "status": "Executing"
+            }
+        ]"""
         def stMap = res.getQStatus()
+
+        then:
         stMap['QPj8nsNWfLam6VQWbeGnp'] == "FailToExecute"
         stMap['u5x3sSLe0p3OznGavmYu3'] == "Executing"
+    }
+
+    def "get queue empty"() {
+        given:
+        def res = new CmdResult()
+
+        when:
+        res.out = """No jobs"""
+        def stMap = res.getQStatus()
+
+        then:
+        stMap.size() == 0
     }
 }

@@ -38,16 +38,16 @@ Go to the folder where you just install the `nextflow` command line.
 Let's call this folder the Nextflow home directory.
 Create the float plugin folder with:
 ```
-mkdir -p .nextflow/plugins/nf-float-0.1.1
+mkdir -p .nextflow/plugins/nf-float-0.1.2
 ```
-where `0.1.1` is the version of the float plugin.  This version number should 
+where `0.1.2` is the version of the float plugin.  This version number should 
 align with the version in of your plugin and the property in your configuration
 file. (check the configuration section)
 
 Retrieve your plugin zip file and unzip it in this folder.
 If everything goes right, you should be able to see two sub-folders:
 ```
-$ ll .nextflow/plugins/nf-float-0.1.1/
+$ ll .nextflow/plugins/nf-float-0.1.2/
 total 48
 drwxr-xr-x 4 ec2-user ec2-user    51 Jan  5 07:17 classes
 drwxr-xr-x 2 ec2-user ec2-user    25 Jan  5 07:17 META-INF
@@ -60,13 +60,13 @@ file with the command line option `-c`.  Here is a sample of the configuration.
 
 ```
 plugins {
-    id 'nf-float@0.1.1'
+    id 'nf-float@0.1.2'
 }
 
 workDir = '/mnt/memverge/shared'
 
 float {
-    address = 'ec2-3-142-124-0.us-east-2.compute.amazonaws.com'
+    address = 'opcenter.compute.amazonaws.com'
     username = 'admin'
     password = 'memverge'
     nfs = 'nfs://1.2.3.4/mnt/memverge/shared'
@@ -77,19 +77,24 @@ float {
 * `workDir` is where we mount the NFS and where Nextflow put the process files.
 * In the `float` section, users must supply the address of the MMCE operation
   center and the proper credentials.
-  * `address` address of your operation center
+  * `address` address of your operation center(s).  Separate multiple addresses with `,`.
   * `username` and `password` are the credentials for your operation center
   * `nfs` points to the location of the NFS.
-  * `image` is an optional property that specifies the default image for a float process.
-  * `cpu` is an optional property that specifies the default number of CPU cores
-    for a float process, the default value is `2`.
-  * `mem` is an optional property that specifies the default size of memory for a
+  * `image` (deprecated) is an optional property that specifies the default image for a float process.
+  * `container` is an optional property that specifies the default image for a float process.
+  * `cpu` (deprecated) is an optional property that specifies the default number of 
+    CPU cores for a float process, the default value is `2`.
+  * `cpus` is an optional property that specifies the default number of
+    CPU cores for a float process, the default value is `2`.
+  * `mem` (deprecated) is an optional property that specifies the default size of memory for a
     float process in GB.  The default value is `4`.
+  * `memory` is an optional property that specifies the default size of memory for a
+    float process in GB.  The default value is `'4 GB'`.
   * `commonExtra` allows the user to specify other submit parameters.  This parameter
     will be appended to every float submit command.
 
 ## Task Sample
-
+[FloatGridExecutor.groovy](plugins%2Fnf-float%2Fsrc%2Fmain%2Fcom%2Fmemverge%2Fnextflow%2FFloatGridExecutor.groovy)
 For each process, users could supply their requirements for the CPU, memory and image.
 Here is an example of a hello world workflow.
 
@@ -114,9 +119,12 @@ workflow {
 ```
 
 * `executor = 'float'` - tells Nextflow to run the workflow with `float`.
-* `cpu` - specifies the number of cores required by this process.
-* `mem` - specifies the number of memory required by this process in GB.
-* `image` - is the name of the container image.
+* `cpu` - (deprecated) specifies the number of cores required by this process.
+* `cpus` - specifies the number of cores required by this process.
+* `mem` - (deprecated) specifies the number of memory required by this process in GB.
+* `memory` specify the memories.  Note that the value is a string, such as `'5 GB'`
+* `image` - (deprecated) is the name of the container image.
+* `contaner` - the same as `image`
 * `extra` - specifies extra parameters for the job.  It will be merged with
             the `commonExtra` parameter. 
 

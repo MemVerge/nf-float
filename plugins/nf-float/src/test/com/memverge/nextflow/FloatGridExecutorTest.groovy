@@ -6,7 +6,6 @@ import nextflow.processor.TaskConfig
 import nextflow.processor.TaskRun
 import spock.lang.Specification
 
-import java.nio.file.Path
 import java.nio.file.Paths
 
 class FloatGridExecutorTest extends Specification {
@@ -126,6 +125,35 @@ class FloatGridExecutorTest extends Specification {
                 '--job', script]
     }
 
+    def "use cpus, memory and container"() {
+        given:
+        def exec = [:] as FloatGridExecutor
+        exec.session = [:] as Session
+        exec.session.workDir = Paths.get(workDir)
+        def task = [:] as TaskRun
+
+        when:
+        exec.session.config = [float: [address : addr,
+                                       username: user,
+                                       password: pass]]
+        task.config = [nfs      : nfs,
+                       cpus     : 8,
+                       memory   : '16 GB',
+                       container: "biocontainers/star"]
+        def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd == ['float', '-a', addr,
+               '-u', user,
+               '-p', pass,
+               'sbatch',
+               '--dataVolume', nfs + ':' + workDir,
+               '--image', "biocontainers/star",
+               '--cpu', '8',
+               '--mem', '16',
+               '--job', script]
+    }
+
     def "add common extras"() {
         given:
         def exec = [:] as FloatGridExecutor
@@ -142,7 +170,7 @@ class FloatGridExecutorTest extends Specification {
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd == ['float', '-a', addr,
+        cmd.join(" ") == ['float', '-a', addr,
                 '-u', user,
                 '-p', pass,
                 'sbatch',
@@ -151,7 +179,7 @@ class FloatGridExecutorTest extends Specification {
                 '--cpu', '2',
                 '--mem', '4',
                 '--job', script,
-                '-t', 'small', '-f']
+                '-t', 'small', '-f'].join(" ")
     }
 
     def "add specific extras"() {
