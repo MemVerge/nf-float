@@ -75,16 +75,19 @@ class CmdResult {
     }
 
     Map getQStatus() {
-        def parser = new JsonSlurper()
-        def obj = parser.parseText(out)
-
         def ret = [:]
-        for (i in obj) {
-            def id = i.id as String
-            def status = i.status as String
-            if (id && status) {
-                ret[id] = status
+        try {
+            def parser = new JsonSlurper()
+            def obj = parser.parseText(out)
+            for (i in obj) {
+                def id = i.id as String
+                def status = i.status as String
+                if (id && status) {
+                    ret[id] = status
+                }
             }
+        } catch (Exception e) {
+            log.warn "failed to parse: ${out}, detail: ${e.toString()}"
         }
         return ret
     }
