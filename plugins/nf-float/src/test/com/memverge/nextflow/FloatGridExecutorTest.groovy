@@ -3,15 +3,34 @@ package com.memverge.nextflow
 import nextflow.Session
 import nextflow.executor.AbstractGridExecutor
 import nextflow.processor.TaskConfig
+import nextflow.processor.TaskId
 import nextflow.processor.TaskRun
 import spock.lang.Specification
 
 import java.nio.file.Paths
 
 class FloatGridExecutorTest extends Specification {
+    def newTestExecutor(Map config = null) {
+        if (config == null) {
+            config = [float: [address : addr,
+                              username: user,
+                              password: pass]]
+        }
+        def exec = [:] as FloatGridExecutor
+        def sess = [:] as Session
+        sess.config = config
+        exec.session = sess
+        exec.floatJobs.setTaskPrefix(tJob)
+        return exec
+    }
+
+    def jobID(TaskId id) {
+        return "$tJob-$id"
+    }
+
     def "get the prefix of kill command"() {
         given:
-        def exec = [:] as FloatGridExecutor
+        def exec = newTestExecutor()
         def id = "myJobId"
 
         when:
@@ -38,40 +57,32 @@ class FloatGridExecutorTest extends Specification {
     def user = 'admin'
     def pass = 'password'
     def nfs = 'nfs://a.b.c'
+    def tJob = 'tJob'
     def cpu = 5
     def mem = 10
     def image = 'cactus'
     def script = '/path/job.sh'
     def workDir = '/mnt/nfs/shared'
+    def taskID = new TaskId(55)
 
     def "kill command"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        def sess = [:] as Session
+        def exec = newTestExecutor()
         def jobID = 'myJobID'
-        sess.config = [float: [address : addr,
-                               username: user,
-                               password: pass]]
-        exec.session = sess
 
         when:
         def cmd = exec.killTaskCommand(jobID)
 
         then:
-        cmd == ['float', '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'scancel', '-j', jobID]
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'scancel', '-j', jobID].join(' ')
     }
 
     def "submit command line"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        def sess = [:] as Session
-
-        sess.config = [float: [address : addr,
-                               username: user,
-                               password: pass]]
+        def exec = newTestExecutor()
         String dataVolume = nfs + ':/data'
         def task = [:] as TaskRun
         def config = [nfs  : dataVolume,
@@ -80,358 +91,379 @@ class FloatGridExecutorTest extends Specification {
                       image: image] as TaskConfig
 
         when:
-        exec.session = sess
         task.config = config
+        task.id = taskID
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd == ['float', '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'sbatch',
-                '--dataVolume', dataVolume,
-                '--image', image,
-                '--cpu', cpu.toString(),
-                '--mem', mem.toString(),
-                '--job', script]
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', dataVolume,
+                          '--image', image,
+                          '--cpu', cpu.toString(),
+                          '--mem', mem.toString(),
+                          '--job', script,
+                          '--name', jobID(taskID)].join(' ')
     }
 
     def "add default local mount point"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        exec.session = [:] as Session
+        def exec = newTestExecutor()
         exec.session.workDir = Paths.get(workDir)
         def task = [:] as TaskRun
 
         when:
-        exec.session.config = [float: [address : addr,
-                                       username: user,
-                                       password: pass]]
         task.config = [nfs  : nfs,
                        cpu  : cpu,
                        mem  : mem,
                        image: image] as TaskConfig
+        task.id = taskID
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd == ['float', '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'sbatch',
-                '--dataVolume', nfs + ':' + workDir,
-                '--image', image,
-                '--cpu', cpu.toString(),
-                '--mem', mem.toString(),
-                '--job', script]
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', nfs + ':' + workDir,
+                          '--image', image,
+                          '--cpu', cpu.toString(),
+                          '--mem', mem.toString(),
+                          '--job', script,
+                          '--name', jobID(taskID)].join(' ')
     }
 
     def "use cpus, memory and container"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        exec.session = [:] as Session
+        def exec = newTestExecutor()
         exec.session.workDir = Paths.get(workDir)
         def task = [:] as TaskRun
 
         when:
-        exec.session.config = [float: [address : addr,
-                                       username: user,
-                                       password: pass]]
         task.config = [nfs      : nfs,
                        cpus     : 8,
                        memory   : '16 GB',
                        container: "biocontainers/star"]
+        task.id = taskID
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd == ['float', '-a', addr,
-               '-u', user,
-               '-p', pass,
-               'sbatch',
-               '--dataVolume', nfs + ':' + workDir,
-               '--image', "biocontainers/star",
-               '--cpu', '8',
-               '--mem', '16',
-               '--job', script]
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', nfs + ':' + workDir,
+                          '--image', "biocontainers/star",
+                          '--cpu', '8',
+                          '--mem', '16',
+                          '--job', script,
+                          '--name', jobID(taskID)].join(' ')
     }
 
     def "add common extras"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        exec.session = [:] as Session
+        def exec = newTestExecutor(
+                [float: [address    : addr,
+                         username   : user,
+                         password   : pass,
+                         commonExtra: '-t \t small -f ']]
+        )
         exec.session.workDir = Paths.get(workDir)
         def task = [:] as TaskRun
 
         when:
-        exec.session.config = [float: [address    : addr,
-                                       username   : user,
-                                       password   : pass,
-                                       commonExtra: '-t \t small -f ']]
         task.config = [nfs: nfs,] as TaskConfig
+        task.id = taskID
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
         cmd.join(" ") == ['float', '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'sbatch',
-                '--dataVolume', nfs + ':' + workDir,
-                '--image', image,
-                '--cpu', '2',
-                '--mem', '4',
-                '--job', script,
-                '-t', 'small', '-f'].join(" ")
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', nfs + ':' + workDir,
+                          '--image', image,
+                          '--cpu', '2',
+                          '--mem', '4',
+                          '--job', script,
+                          '--name', jobID(taskID),
+                          '-t', 'small', '-f'].join(" ")
     }
 
     def "add specific extras"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        exec.session = [:] as Session
+        def exec = newTestExecutor()
         exec.session.workDir = Paths.get(workDir)
         def task = [:] as TaskRun
 
         when:
-        exec.session.config = [float: [address : addr,
-                                       username: user,
-                                       password: pass,]]
+        task.id = taskID
         task.config = [nfs  : nfs,
                        extra: ' -f -t \t small  ',] as TaskConfig
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd == ['float', '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'sbatch',
-                '--dataVolume', nfs + ':' + workDir,
-                '--image', image,
-                '--cpu', '2',
-                '--mem', '4',
-                '--job', script,
-                '-f', '-t', 'small']
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', nfs + ':' + workDir,
+                          '--image', image,
+                          '--cpu', '2',
+                          '--mem', '4',
+                          '--job', script,
+                          '--name', jobID(taskID),
+                          '-f', '-t', 'small'].join(' ')
     }
 
     def "both common extra and specific extra"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        exec.session = [:] as Session
+        def exec = newTestExecutor(
+                [float: [address    : addr,
+                         username   : user,
+                         password   : pass,
+                         commonExtra: '-t \t small -f ']]
+        )
         exec.session.workDir = Paths.get(workDir)
         def task = [:] as TaskRun
 
         when:
-        exec.session.config = [float: [address    : addr,
-                                       username   : user,
-                                       password   : pass,
-                                       commonExtra: '-t \t small -f ']]
         task.config = [nfs  : nfs,
                        extra: '--name hello',] as TaskConfig
+        task.id = taskID
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd == ['float', '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'sbatch',
-                '--dataVolume', nfs + ':' + workDir,
-                '--image', image,
-                '--cpu', '2',
-                '--mem', '4',
-                '--job', script,
-                '-t', 'small', '-f', '--name', 'hello']
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', nfs + ':' + workDir,
+                          '--image', image,
+                          '--cpu', '2',
+                          '--mem', '4',
+                          '--job', script,
+                          '--name', jobID(taskID),
+                          '-t', 'small', '-f',
+                          '--name', 'hello'].join(' ')
     }
 
     def "config level cpu and memory"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        exec.session = [:] as Session
-        exec.session.workDir = Paths.get(workDir)
-        def task = [:] as TaskRun
         def cpu = 3
         def mem = 6
+        def exec = newTestExecutor(
+                [float: [address : addr,
+                         username: user,
+                         password: pass,
+                         cpu     : cpu,
+                         mem     : mem,
+                         nfs     : nfs]])
+        exec.session.workDir = Paths.get(workDir)
+        def task = [:] as TaskRun
 
         when:
-        exec.session.config = [float: [address : addr,
-                                       username: user,
-                                       password: pass,
-                                       cpu     : cpu,
-                                       mem     : mem,
-                                       nfs     : nfs]]
         task.config = [image: image] as TaskConfig
+        task.id = taskID
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd == ['float', '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'sbatch',
-                '--dataVolume', nfs + ':' + workDir,
-                '--image', image,
-                '--cpu', cpu.toString(),
-                '--mem', mem.toString(),
-                '--job', script]
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', nfs + ':' + workDir,
+                          '--image', image,
+                          '--cpu', cpu.toString(),
+                          '--mem', mem.toString(),
+                          '--job', script,
+                          '--name', jobID(taskID)].join(' ')
     }
 
     def "use default cpu, memory and image"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        def sess = [:] as Session
+        def exec = newTestExecutor(
+                [float: [address : addr,
+                         username: user,
+                         password: pass,
+                         image   : 'cactus']])
 
-        sess.config = [float: [address : addr,
-                               username: user,
-                               password: pass,
-                               image   : 'cactus']]
         String dataVolume = nfs + ':/data'
         def task = [:] as TaskRun
         def config = [nfs: dataVolume,] as TaskConfig
 
         when:
-        exec.session = sess
         task.config = config
+        task.id = taskID
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd == ['float', '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'sbatch',
-                '--dataVolume', dataVolume,
-                '--image', image,
-                '--cpu', '2',
-                '--mem', '4',
-                '--job', script]
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', dataVolume,
+                          '--image', image,
+                          '--cpu', '2',
+                          '--mem', '4',
+                          '--job', script,
+                          '--name', jobID(taskID)].join(' ')
     }
 
     def "use default nfs and work dir"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        exec.session = [:] as Session
+        def exec = newTestExecutor(
+                [float: [address : addr,
+                         username: user,
+                         password: pass,
+                         nfs     : nfs,]])
         exec.session.workDir = Paths.get(workDir)
         def task = [:] as TaskRun
 
         when:
-        exec.session.config = [float: [address : addr,
-                                       username: user,
-                                       password: pass,
-                                       nfs     : nfs,]]
         task.config = ['cpu'  : cpu,
                        'mem'  : mem,
                        'image': image] as TaskConfig
+        task.id = taskID
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd == ['float', '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'sbatch',
-                '--dataVolume', nfs + ':' + workDir,
-                '--image', image,
-                '--cpu', cpu.toString(),
-                '--mem', mem.toString(),
-                '--job', script]
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', nfs + ':' + workDir,
+                          '--image', image,
+                          '--cpu', cpu.toString(),
+                          '--mem', mem.toString(),
+                          '--job', script,
+                          '--name', jobID(taskID)].join(' ')
     }
 
     def "parse data volume"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        exec.session = [:] as Session
+        def exec = newTestExecutor(
+                [float: [address : addr,
+                         username: user,
+                         password: pass,
+                         nfs     : nfs,]])
         exec.session.workDir = Paths.get(workDir)
         def task = [:] as TaskRun
 
         when:
-        exec.session.config = [float: [address : addr,
-                                       username: user,
-                                       password: pass,
-                                       nfs     : nfs,]]
         task.config = ['cpu'  : cpu,
                        'mem'  : mem,
                        'image': image,
                        'extra': '''-M cpu.upperBoundDuration=5s --dataVolume "[size=50]":/BWA_BASE''',
         ] as TaskConfig
+        task.id = taskID
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd == ['float', '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'sbatch',
-                '--dataVolume', nfs + ':' + workDir,
-                '--image', image,
-                '--cpu', cpu.toString(),
-                '--mem', mem.toString(),
-                '--job', script,
-                '-M', 'cpu.upperBoundDuration=5s',
-                '--dataVolume', '"[size=50]":/BWA_BASE']
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', nfs + ':' + workDir,
+                          '--image', image,
+                          '--cpu', cpu.toString(),
+                          '--mem', mem.toString(),
+                          '--job', script,
+                          '--name', jobID(taskID),
+                          '-M', 'cpu.upperBoundDuration=5s',
+                          '--dataVolume', '"[size=50]":/BWA_BASE'].join(' ')
     }
 
     def "parse queue status"() {
         given:
-        def exec = [:] as FloatGridExecutor
+        def exec = newTestExecutor()
         def text = """
         [                                                               
             {                                                           
                 "id": "task0",                          
-                "name": "cactus-t3a.medium",                                                                                            
+                "name": "tJob-0",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
                 "status": "Submitted"
             },
             {                                                           
                 "id": "task1",                          
-                "name": "cactus-t3a.medium",                                                                                            
+                "name": "tJob-1",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
                 "status": "Initializing"
             },
             {                                                           
                 "id": "task2",                          
-                "name": "cactus-t3a.medium",                                                                                            
+                "name": "tJob-2",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
                 "status": "Executing"
             },
             {                                                           
                 "id": "task3",                          
-                "name": "cactus-t3a.medium",                                                                                            
+                "name": "tJob-3",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
                 "status": "Floating"
             },
             {                                                           
                 "id": "task4",                          
-                "name": "cactus-t3a.medium",                                                                                            
+                "name": "tJob-4",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
                 "status": "Completed"
             },
             {                                                           
                 "id": "task5",                          
-                "name": "cactus-t3a.medium",                                                                                            
+                "name": "tJob-5",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
                 "status": "Cancelled"
             },
             {                                                           
                 "id": "task6",                          
-                "name": "cactus-t3a.medium",                                                                                            
+                "name": "tJob-6",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
                 "status": "FailToComplete"
             },
             {                                                           
                 "id": "task7",                          
-                "name": "cactus-t3a.medium",                                                                                            
+                "name": "tJob-7",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
                 "status": "FailToExecute"
+            },
+            {                                                           
+                "id": "task8",                          
+                "name": "tJob-8",                                                                                            
+                "user": "admin",                                        
+                "imageID": "docker.io/memverge/cactus:latest",          
+                "status": "Completed"
             }
         ]                          
         """.stripIndent()
 
         when:
+        (0..8).forEach {
+            def task = [:] as TaskRun
+            task.workDir = Paths.get(
+                    'src', 'test', 'com', 'memverge', 'nextflow')
+            task.id = new TaskId(it)
+            exec.getDirectives(task, [])
+        }
+
+
+        def dir = Paths.get('src', 'test', 'com', 'memverge')
+        exec.floatJobs.setWorkDir(new TaskId(8), dir.toString())
         def res = exec.parseQueueStatus(text)
 
         then:
         def qs = AbstractGridExecutor.QueueStatus
-        res.size() == 8
+        res.size() == 9
         res['task0'] == qs.PENDING
         res['task1'] == qs.RUNNING
         res['task2'] == qs.RUNNING
@@ -440,27 +472,18 @@ class FloatGridExecutorTest extends Specification {
         res['task5'] == qs.ERROR
         res['task6'] == qs.ERROR
         res['task7'] == qs.ERROR
+        res['task8'] == qs.UNKNOWN
     }
 
     def "retrieve queue status command"() {
         given:
-        def exec = [:] as FloatGridExecutor
-        def sess = [:] as Session
-
-        def address = 'float.my.com'
-        def user = 'admin'
-        def pass = 'password'
-
-        sess.config = [float: [address : address,
-                               username: user,
-                               password: pass]]
+        def exec = newTestExecutor()
 
         when:
-        exec.session = sess
         def cmd = exec.queueStatusCommand(null)
 
         then:
-        cmd == ['float', '-a', address,
+        cmd == ['float', '-a', addr,
                 '-u', user,
                 '-p', pass,
                 'squeue', '--format', 'json']

@@ -42,13 +42,19 @@ class FloatConf {
             Map node = ((Map) config.float)
             ret.username = node.username
             ret.password = node.password
-            ret.addresses = node.address.toString()
-                    .split(",")
-                    .toList()
-                    .stream()
-                    .filter { it.size() > 0 }
-                    .map { it.trim() }
-                    .collect()
+            if (node.address instanceof Collection) {
+                ret.addresses = (node.address as Collection).collect {
+                    it.toString()
+                }
+            } else {
+                ret.addresses = node.address.toString()
+                        .split(",")
+                        .toList()
+                        .stream()
+                        .filter { it.size() > 0 }
+                        .map { it.trim() }
+                        .collect()
+            }
             ret.commonExtra = node.commonExtra
             ret.nfs = node.nfs
             if (node.cpu) {
