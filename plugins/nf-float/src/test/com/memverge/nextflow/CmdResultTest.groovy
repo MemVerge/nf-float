@@ -116,10 +116,14 @@ class CmdResultTest extends Specification {
             }
         ]"""
         def stMap = res.getQStatus()
+        def st1 = stMap['QPj8nsNWfLam6VQWbeGnp']
+        def st2 = stMap['u5x3sSLe0p3OznGavmYu3']
 
         then:
-        stMap['QPj8nsNWfLam6VQWbeGnp'] == "FailToExecute"
-        stMap['u5x3sSLe0p3OznGavmYu3'] == "Executing"
+        st1.status == 'FailToExecute'
+        st1.taskID == 'cactus-c5d.large'
+        st2.status == 'Executing'
+        st2.taskID == 'cactus-t3a.medium'
     }
 
     def "get queue empty"() {

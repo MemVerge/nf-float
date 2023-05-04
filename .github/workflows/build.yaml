@@ -1,4 +1,4 @@
-name: nf-hello CI
+name: nf-float CI
 on:
   push:
     branches:

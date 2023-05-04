@@ -74,16 +74,17 @@ class CmdResult {
         return rc.strip('"')
     }
 
-    Map getQStatus() {
-        def ret = [:]
+    Map<String, JobStatus> getQStatus() {
+        Map<String, JobStatus> ret = new HashMap<>()
         try {
             def parser = new JsonSlurper()
             def obj = parser.parseText(out)
             for (i in obj) {
                 def id = i.id as String
                 def status = i.status as String
+                def taskID = i.name as String
                 if (id && status) {
-                    ret[id] = status
+                    ret[id] = new JobStatus(taskID, status)
                 }
             }
         } catch (Exception e) {

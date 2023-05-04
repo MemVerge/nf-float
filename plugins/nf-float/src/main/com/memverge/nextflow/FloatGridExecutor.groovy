@@ -6,10 +6,10 @@ import nextflow.executor.AbstractGridExecutor
 import nextflow.processor.TaskConfig
 import nextflow.processor.TaskRun
 import nextflow.util.ServiceName
+import org.apache.commons.lang.RandomStringUtils
 import org.apache.commons.lang.StringUtils
 
 import java.nio.file.Path
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 
@@ -20,11 +20,19 @@ import java.util.stream.Collectors
 @ServiceName('float')
 @CompileStatic
 class FloatGridExecutor extends AbstractGridExecutor {
-    private Map<String, String> job2oc = new ConcurrentHashMap<>()
+    private FloatJobs _floatJobs
+
     private AtomicInteger serial = new AtomicInteger()
 
     private FloatConf getFloatConf() {
         return FloatConf.getConf(session.config)
+    }
+
+    FloatJobs getFloatJobs() {
+        if (_floatJobs == null) {
+            _floatJobs = new FloatJobs(floatConf.addresses)
+        }
+        return _floatJobs
     }
 
     @Override
@@ -34,7 +42,8 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
     @Override
     protected List<String> getDirectives(TaskRun task, List<String> initial) {
-        log.info "[float] switch to ${task.workDirStr}"
+        log.info "[float] switch task ${task.id} to ${task.workDirStr}"
+        floatJobs.setWorkDir(task.id, task.workDirStr)
         initial << 'cd'
         initial << task.workDirStr
         return initial
@@ -122,7 +131,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     private List<String> getCmdPrefixForJob(String jobID) {
-        def oc = job2oc.getOrDefault(jobID, floatConf.addresses[0])
+        def oc = floatJobs.getOc(jobID)
         return floatConf.getCliPrefix(oc)
     }
 
@@ -154,6 +163,8 @@ class FloatGridExecutor extends AbstractGridExecutor {
         cmd << getMem(task)
         cmd << '--job'
         cmd << scriptFile.toString()
+        cmd << '--name'
+        cmd << floatJobs.getJobName(task.id)
         cmd.addAll(getExtra(task))
         log.info "[float] submit job: ${cmd.join(' ')}"
         return cmd
@@ -245,45 +256,9 @@ class FloatGridExecutor extends AbstractGridExecutor {
     @Override
     protected Map<String, QueueStatus> getQueueStatus0(queue) {
         Map<String, List<String>> cmdMap = queueStatusCommands()
-        if (cmdMap.size() == 0) {
-            return null
-        }
-        def ret = new ConcurrentHashMap<String, QueueStatus>()
-        cmdMap.entrySet().parallelStream().map { entry ->
-            def oc = entry.key
-            def cmd = entry.value
-            log.debug "[float] getting queue ${queue ? "($queue) " : ''}status > cmd: ${cmd.join(' ')}"
-            try {
-                final buf = new StringBuilder()
-                final process = new ProcessBuilder(cmd).redirectErrorStream(true).start()
-                final consumer = process.consumeProcessOutputStream(buf)
-                process.waitForOrKill(60_000)
-                final exit = process.exitValue(); consumer.join() // <-- make sure sync with the output consume #1045
-                final result = buf.toString()
-
-                if (exit == 0) {
-                    log.trace "[${name.toUpperCase()}] queue ${queue ? "($queue) " : ''}status > cmd exit: $exit\n$result"
-                    def status = parseQueueStatus(result)
-                    status.each { key, val ->
-                        ret[key] = val
-                        job2oc[key] = oc
-                    }
-                } else {
-                    def m = """\
-                [float] queue ${queue ? "($queue) " : ''}status cannot be fetched
-                - cmd executed: ${cmd.join(' ')}
-                - exit status : $exit
-                - output      :
-                """.stripIndent()
-                    m += result.indent('  ')
-                    log.warn1(m, firstOnly: true)
-                }
-            } catch (Exception e) {
-                log.warn "[${name.toUpperCase()}] failed to retrieve queue ${queue ? "($queue) " : ''}status -- See the log file for details", e
-            }
-        }.collect()
+        floatJobs.updateStatus(cmdMap)
         log.debug "[float] collecting job status completes."
-        return ret
+        return queueStatus
     }
 
     protected Map<String, List<String>> queueStatusCommands() {
@@ -298,6 +273,12 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return getQueueCmdOfOC()
     }
 
+    @Override
+    protected Map<String, QueueStatus> parseQueueStatus(String s) {
+        def stMap = floatJobs.parseQStatus(s)
+        return toStatusMap(stMap)
+    }
+
     private List<String> getQueueCmdOfOC(String oc = "") {
         def cmd = floatConf.getCliPrefix(oc)
         cmd << 'squeue'
@@ -307,33 +288,33 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return cmd
     }
 
-    static private Map<String, QueueStatus> STATUS_MAP = [
-            "Submitted"        : QueueStatus.PENDING,
-            "Initializing"     : QueueStatus.RUNNING,
-            "Executing"        : QueueStatus.RUNNING,
-            "Floating"         : QueueStatus.HOLD,
-            "Completed"        : QueueStatus.DONE,
-            "Cancelled"        : QueueStatus.ERROR,
-            "FailToComplete"   : QueueStatus.ERROR,
-            "FailToExecute"    : QueueStatus.ERROR,
-            "CheckpointFailed" : QueueStatus.ERROR,
-            "WaitingForLicense": QueueStatus.ERROR,
-            "Timedout"         : QueueStatus.ERROR,
-            "NoAvailableHost"  : QueueStatus.ERROR,
-            "Unknown"          : QueueStatus.ERROR,
-    ]
+    private Map<String, QueueStatus> getQueueStatus() {
+        Map<String, String> stMap = floatJobs.getJob2Status()
+        return toStatusMap(stMap)
+    }
 
-    @Override
-    protected Map<String, QueueStatus> parseQueueStatus(String text) {
-        Map<String, QueueStatus> ret = [:]
-        def stMap = CmdResult.with(text).getQStatus()
-        stMap.each { key, value ->
-            def sKey = key as String
-            def st = STATUS_MAP.get(value)
-            if (sKey && st) {
-                ret.put(key as String, STATUS_MAP.get(value))
-            }
+    private static Map<String, QueueStatus> toStatusMap(Map<String, String> stMap) {
+        Map<String, QueueStatus> ret = new HashMap<>()
+        stMap.forEach { key, value ->
+            QueueStatus status = STATUS_MAP.getOrDefault(value, QueueStatus.UNKNOWN)
+            ret[key] = status
         }
         return ret
     }
+
+    static private Map<String, QueueStatus> STATUS_MAP = [
+            'Submitted'        : QueueStatus.PENDING,
+            'Initializing'     : QueueStatus.RUNNING,
+            'Executing'        : QueueStatus.RUNNING,
+            'Floating'         : QueueStatus.HOLD,
+            'Completed'        : QueueStatus.DONE,
+            'Cancelled'        : QueueStatus.ERROR,
+            'FailToComplete'   : QueueStatus.ERROR,
+            'FailToExecute'    : QueueStatus.ERROR,
+            'CheckpointFailed' : QueueStatus.ERROR,
+            'WaitingForLicense': QueueStatus.ERROR,
+            'Timedout'         : QueueStatus.ERROR,
+            'NoAvailableHost'  : QueueStatus.ERROR,
+            'Unknown'          : QueueStatus.UNKNOWN,
+    ]
 }
