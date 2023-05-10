@@ -9,8 +9,6 @@ import nextflow.trace.TraceObserverFactory
 class FloatFactory implements TraceObserverFactory {
     @Override
     Collection<TraceObserver> create(Session session) {
-        final res = new ArrayList()
-        res.add(new FloatObserver())
-        return res
+        return new ArrayList()
     }
 }

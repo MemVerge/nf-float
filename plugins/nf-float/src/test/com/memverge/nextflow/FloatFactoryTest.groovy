@@ -9,7 +9,6 @@ class FloatFactoryTest extends Specification {
         def result = new FloatFactory().create(Mock(Session))
 
         then:
-        result.size() == 1
-        result[0] instanceof FloatObserver
+        result.size() == 0
     }
 }
