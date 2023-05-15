@@ -9,6 +9,10 @@ workload with `float`.
 to run the workload with `float` command line.  It requires the user to set up
 proper NFS for all workers.
 
+## License
+
+[Apache License Version 2.0](./LICENSE)
+
 ## Installation
 
 To run `float` with Nextflow, you must install the Nextflow and the float plugin.
