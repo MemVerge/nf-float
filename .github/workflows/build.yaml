@@ -38,7 +38,7 @@ jobs:
       - name: Compile
         run: ./gradlew assemble
 
-      - name: Tests
+      - name: Test
         run: ./gradlew check
         env:
           GRADLE_OPTS: '-Dorg.gradle.daemon=false'

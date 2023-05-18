@@ -1,0 +1,57 @@
+name: on release
+
+on:
+  release:
+    types: [ published ]
+
+jobs:
+  on-release:
+    name: Release nf-float
+    strategy:
+      fail-fast: false
+      matrix:
+        java_version: [ 11 ]
+        os: [ ubuntu-latest ]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - name: Environment
+        run: env | sort
+
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          submodules: true
+
+      - name: Setup Java ${{ matrix.java_version }}
+        uses: actions/setup-java@v1
+        with:
+          java-version: ${{ matrix.java_version }}
+          architecture: x64
+
+      - name: Compile
+        run: ./gradlew assemble
+
+      - name: Test
+        run: ./gradlew check
+        env:
+          GRADLE_OPTS: '-Dorg.gradle.daemon=false'
+
+      - name: Package
+        run: ./gradlew makeZip
+
+      - name: On Release Script
+        id: on_release
+        working-directory: .
+        run: ./shell/on_release.sh
+
+      - name: Upload zip to Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{ steps.on_release.outputs.zip_path }}
+          asset_name: ${{ steps.on_release.outputs.zip_filename }}
+          asset_content_type: application/gzip
