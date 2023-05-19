@@ -88,23 +88,18 @@ class FloatJobs {
             if (StringUtils.length(workDir) == 0) {
                 return
             }
+            def files = ['.command.out', '.command.err', '.exitcode']
             if (currentSt != Completed && st == Completed) {
-                def outName = Paths.get(workDir, ".command.out").toString()
-                def errName = Paths.get(workDir, ".command.err").toString()
-
-                File out = new File(outName)
-                File err = new File(errName)
-                if (!out.exists()) {
-                    log.warn("job $jobID completed but file not found: " +
-                            outName)
-                    return
+                for (filename in files) {
+                    def name = Paths.get(workDir, filename).toString()
+                    def file = new File(name)
+                    if (!file.exists()) {
+                        log.warn("job $jobID completed " +
+                                "but file not found: $filename")
+                        return
+                    }
                 }
-                if (!err.exists()) {
-                    log.warn("job $jobID completed but file not found: " +
-                            errName)
-                    return
-                }
-                log.info("found stdout & stderr in: $workDir")
+                log.info("found $files in: $workDir")
             }
             job2status.put(jobID, st)
         }
