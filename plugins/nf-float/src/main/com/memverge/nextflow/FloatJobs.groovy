@@ -88,6 +88,8 @@ class FloatJobs {
             if (StringUtils.length(workDir) == 0) {
                 return
             }
+            // call list files to update the folder cache
+            new File(workDir).listFiles()
             def files = ['.command.out', '.command.err', '.exitcode']
             if (currentSt != Completed && st == Completed) {
                 for (filename in files) {
@@ -95,7 +97,7 @@ class FloatJobs {
                     def file = new File(name)
                     if (!file.exists()) {
                         log.warn("job $jobID completed " +
-                                "but file not found: $filename")
+                                "but file not found: $name")
                         return
                     }
                 }
