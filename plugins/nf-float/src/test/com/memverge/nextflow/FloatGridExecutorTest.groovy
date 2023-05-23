@@ -458,12 +458,20 @@ class FloatGridExecutorTest extends Specification {
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
                 "status": "Completed"
+            },
+            {                                                           
+                "id": "task9",                          
+                "name": "tJob-9",                                                                                            
+                "user": "admin",                                        
+                "imageID": "docker.io/memverge/cactus:latest",          
+                "status": "Starting"
             }
         ]                          
         """.stripIndent()
 
         when:
-        (0..8).forEach {
+        def count = 9
+        (0..count).forEach {
             def task = [:] as TaskRun
             task.workDir = Paths.get(
                     'src', 'test', 'com', 'memverge', 'nextflow')
@@ -478,9 +486,9 @@ class FloatGridExecutorTest extends Specification {
 
         then:
         def qs = AbstractGridExecutor.QueueStatus
-        res.size() == 9
+        res.size() == count + 1
         res['task0'] == qs.PENDING
-        res['task1'] == qs.RUNNING
+        res['task1'] == qs.PENDING
         res['task2'] == qs.RUNNING
         res['task3'] == qs.HOLD
         res['task4'] == qs.DONE
@@ -488,6 +496,7 @@ class FloatGridExecutorTest extends Specification {
         res['task6'] == qs.ERROR
         res['task7'] == qs.ERROR
         res['task8'] == qs.UNKNOWN
+        res['task9'] == qs.RUNNING
     }
 
     def "retrieve queue status command"() {
