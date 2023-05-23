@@ -318,11 +318,13 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
     static private Map<String, QueueStatus> STATUS_MAP = [
             'Submitted'        : QueueStatus.PENDING,
-            'Initializing'     : QueueStatus.RUNNING,
+            'Initializing'     : QueueStatus.PENDING,
+            'Starting'         : QueueStatus.RUNNING,
             'Executing'        : QueueStatus.RUNNING,
             'Floating'         : QueueStatus.HOLD,
             'Completed'        : QueueStatus.DONE,
             'Cancelled'        : QueueStatus.ERROR,
+            'Cancelling'       : QueueStatus.ERROR,
             'FailToComplete'   : QueueStatus.ERROR,
             'FailToExecute'    : QueueStatus.ERROR,
             'CheckpointFailed' : QueueStatus.ERROR,

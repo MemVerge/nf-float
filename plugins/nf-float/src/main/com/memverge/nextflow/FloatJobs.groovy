@@ -105,6 +105,7 @@ class FloatJobs {
             }
             job2status.put(jobID, st)
         }
+        log.debug("[float] update op-center $oc job status: $job2status")
         return job2status
     }
 
