@@ -490,7 +490,7 @@ class FloatGridExecutorTest extends Specification {
         res['task0'] == qs.PENDING
         res['task1'] == qs.PENDING
         res['task2'] == qs.RUNNING
-        res['task3'] == qs.HOLD
+        res['task3'] == qs.RUNNING
         res['task4'] == qs.DONE
         res['task5'] == qs.ERROR
         res['task6'] == qs.ERROR

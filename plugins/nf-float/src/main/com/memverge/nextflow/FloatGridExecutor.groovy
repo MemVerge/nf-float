@@ -321,7 +321,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             'Initializing'     : QueueStatus.PENDING,
             'Starting'         : QueueStatus.RUNNING,
             'Executing'        : QueueStatus.RUNNING,
-            'Floating'         : QueueStatus.HOLD,
+            'Floating'         : QueueStatus.RUNNING,
             'Completed'        : QueueStatus.DONE,
             'Cancelled'        : QueueStatus.ERROR,
             'Cancelling'       : QueueStatus.ERROR,
