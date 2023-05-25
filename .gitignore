@@ -9,3 +9,6 @@ build
 work
 lib
 out
+
+# credentials
+gradle.properties
