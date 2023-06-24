@@ -1,13 +1,15 @@
 # nf-float plugin
 
-This project contains the Nextflow plugin for MemVerge MMCE(float).
-
-This plugin implements the `float` executor and allows Nextflow to execute the
-workload with `float`.
+This project contains the Nextflow plugin for MemVerge Memory Machine Cloud 
+(aka. float).
 
 `FloatGridExecutor` extends the `AbstractGridExecutor` and tells Nextflow how
-to run the workload with `float` command line.  It requires the user to set up
-proper NFS for all workers.
+to run the workload with `float` command line.  
+
+Please make sure your nextflow node shares the same work directory with the
+worker nodes/containers.  It should be a shared file system such as NFS or S3FS.
+
+Otherwise, the worker nodes won't be able to see the task files.
 
 ## License
 
@@ -35,13 +37,35 @@ __Note__:
 Nextflow requires java 11 or higher.  You may need to install openjdk 11 
 for your environment.
 
+You could always find the latest installation
+guide at https://www.nextflow.io/docs/latest/getstarted.html.
+
 
 ### Install nf-float plugin
+
+#### Auto Install
+
+The `nf-float` plugin is available on the Nextflow community plugins site.
+When Nextflow sees following configuration, it will automatically download
+the plugin.  
+
+Just make sure you have proper internet access.
+
+```groovy
+plugins {
+    id 'nf-float@0.1.7'
+}
+```
+
+#### Manual Install
+
+Sometimes you want to deploy a customized plugin.  In this case, you can
+install it manually.
 
 Go to the folder where you just install the `nextflow` command line.
 Let's call this folder the Nextflow home directory.
 Create the float plugin folder with:
-```
+```bash
 mkdir -p .nextflow/plugins/nf-float-0.1.7
 ```
 where `0.1.7` is the version of the float plugin.  This version number should 
@@ -50,7 +74,8 @@ file. (check the configuration section)
 
 Retrieve your plugin zip file and unzip it in this folder.
 If everything goes right, you should be able to see two sub-folders:
-```
+
+```bash
 $ ll .nextflow/plugins/nf-float-0.1.7/
 total 48
 drwxr-xr-x 4 ec2-user ec2-user    51 Jan  5 07:17 classes
@@ -62,7 +87,7 @@ drwxr-xr-x 2 ec2-user ec2-user    25 Jan  5 07:17 META-INF
 Users need to update the default configuration file or supply a configuration
 file with the command line option `-c`.  Here is a sample of the configuration.
 
-```
+```groovy
 plugins {
     id 'nf-float@0.1.7'
 }
@@ -98,11 +123,11 @@ float {
     will be appended to every float submit command.
 
 ## Task Sample
-[FloatGridExecutor.groovy](plugins%2Fnf-float%2Fsrc%2Fmain%2Fcom%2Fmemverge%2Fnextflow%2FFloatGridExecutor.groovy)
+
 For each process, users could supply their requirements for the CPU, memory and image.
 Here is an example of a hello world workflow.
 
-```
+```groovy
 process sayHello {
   executor = 'float'
   image = 'cactus'
