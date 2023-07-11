@@ -15,6 +15,7 @@
  */
 package com.memverge.nextflow
 
+import nextflow.exception.AbortOperationException
 import spock.lang.Specification
 
 class FloatConfTest extends Specification {
@@ -35,6 +36,19 @@ class FloatConfTest extends Specification {
         given:
         def conf = [
                 float: [address: "1.2.3.4,2.3.4.5"]
+        ]
+
+        when:
+        def fConf = FloatConf.getConf(conf)
+
+        then:
+        fConf.addresses == ["1.2.3.4", "2.3.4.5"]
+    }
+
+    def "2 op-centers in the address"() {
+        given:
+        def conf = [
+                float: [address: ["1.2.3.4", "2.3.4.5"]]
         ]
 
         when:
@@ -169,5 +183,34 @@ class FloatConfTest extends Specification {
 
         then:
         fConf.image == 'b'
+    }
+
+    def "get config from process" () {
+        given:
+        def conf = [
+                process: [cpus: 4,
+                          memory: '5 GB',
+                          container: 'busybox']]
+
+        when:
+        def fConf = FloatConf.getConf(conf)
+
+        then:
+        fConf.cpu == '4'
+        fConf.memGB.toGiga() == 5
+        fConf.image == 'busybox'
+    }
+
+    def "credentials are required" () {
+        given:
+        def conf = [
+                float: [address: '1.2.3.4']]
+
+        when:
+        def fConf = FloatConf.getConf(conf)
+        fConf.validate()
+
+        then:
+        thrown AbortOperationException
     }
 }

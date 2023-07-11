@@ -50,48 +50,59 @@ class FloatConf {
     static FloatConf getConf(Map config) {
         FloatConf ret = new FloatConf()
 
-        if (config && config.float instanceof Map) {
-            Map node = ((Map) config.float)
-            ret.username = node.username
-            ret.password = node.password
-            if (node.address instanceof Collection) {
-                ret.addresses = (node.address as Collection).collect {
-                    it.toString()
-                }
-            } else {
-                ret.addresses = node.address.toString()
-                        .split(",")
-                        .toList()
-                        .stream()
-                        .filter { it.size() > 0 }
-                        .map { it.trim() }
-                        .collect()
+        if (config) {
+            if (config.float instanceof Map) {
+                ret.parseNode(config.float)
             }
-            ret.commonExtra = node.commonExtra
-            ret.nfs = node.nfs
-            if (node.cpu) {
-                ret.cpu = node.cpu as String
-            }
-            if (node.cpus) {
-                ret.cpu = node.cpus as String
-            }
-            if (node.mem) {
-                def unit = "${node.mem as String} GB"
-                ret.memGB = MemoryUnit.of(unit)
-            }
-            if (node.memory) {
-                ret.memGB = MemoryUnit.of(node.memory as String)
-            }
-            if (node.image) {
-                ret.image = node.image as String
-            }
-            if (node.container) {
-                ret.image = node.container as String
+            if (config.process instanceof Map) {
+                ret.parseNode(config.process)
             }
         }
         return ret
     }
 
+    void parseNode(Object obj) {
+        Map node = obj as Map
+        if (node == null) {
+            return
+        }
+        username = node.username
+        password = node.password
+        if (node.address instanceof Collection) {
+            addresses = (node.address as Collection).collect {
+                it.toString()
+            }
+        } else {
+            addresses = node.address.toString()
+                    .split(",")
+                    .toList()
+                    .stream()
+                    .filter { it.size() > 0 }
+                    .map { it.trim() }
+                    .collect()
+        }
+        commonExtra = node.commonExtra
+        nfs = node.nfs
+        if (node.cpu) {
+            cpu = node.cpu as String
+        }
+        if (node.cpus) {
+            cpu = node.cpus as String
+        }
+        if (node.mem) {
+            def unit = "${node.mem as String} GB"
+            memGB = MemoryUnit.of(unit)
+        }
+        if (node.memory) {
+            memGB = MemoryUnit.of(node.memory as String)
+        }
+        if (node.image) {
+            image = node.image as String
+        }
+        if (node.container) {
+            image = node.container as String
+        }
+    }
 
     void validate() {
         if (!username) {
