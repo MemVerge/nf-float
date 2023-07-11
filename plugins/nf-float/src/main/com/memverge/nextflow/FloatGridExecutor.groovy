@@ -18,6 +18,7 @@ package com.memverge.nextflow
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.executor.AbstractGridExecutor
+import nextflow.extension.FilesEx
 import nextflow.processor.TaskConfig
 import nextflow.processor.TaskRun
 import nextflow.util.ServiceName
@@ -38,6 +39,8 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
     private AtomicInteger serial = new AtomicInteger()
 
+    private String _binDir
+
     private FloatConf getFloatConf() {
         return FloatConf.getConf(session.config)
     }
@@ -50,6 +53,12 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     @Override
+    protected void register() {
+        super.register()
+        uploadBinDir()
+    }
+
+    @Override
     protected String getHeaderToken() {
         return ''
     }
@@ -58,9 +67,30 @@ class FloatGridExecutor extends AbstractGridExecutor {
     protected List<String> getDirectives(TaskRun task, List<String> initial) {
         log.info "[float] switch task ${task.id} to ${task.workDirStr}"
         floatJobs.setWorkDir(task.id, task.workDirStr)
+
+        // go to the work directory
         initial << 'cd'
         initial << task.workDirStr
+
+        if (needBinDir()) {
+            // add path to the script
+            initial << 'export'
+            initial << 'PATH=$PATH:' + _binDir + '/bin'
+        }
         return initial
+    }
+
+    private boolean needBinDir() {
+        return session.binDir && !session.binDir.empty() && !session.disableRemoteBinDir
+    }
+
+    private void uploadBinDir() {
+        // upload local binaries
+        if (needBinDir()) {
+            _binDir = getTempDir()
+            log.info "Uploading local `bin` ${session.binDir} to ${_binDir}/bin"
+            FilesEx.copyTo(session.binDir, _binDir)
+        }
     }
 
     private void validateTaskConf(TaskConfig config) {
