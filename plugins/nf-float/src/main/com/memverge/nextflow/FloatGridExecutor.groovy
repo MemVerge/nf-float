@@ -162,6 +162,11 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return floatConf.getCliPrefix(address)
     }
 
+    private String toCmdString(List<String> floatCmd) {
+        def ret = floatCmd.join(" ")
+        return ret.replace("-p ${floatConf.password}", "-p ***")
+    }
+
     @Override
     List<String> getSubmitCommandLine(TaskRun task, Path scriptFile) {
         validateTaskConf(task.config)
@@ -180,7 +185,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         cmd << '--name'
         cmd << floatJobs.getJobName(task.id)
         cmd.addAll(getExtra(task))
-        log.info "[float] submit job: ${cmd.join(' ')}"
+        log.info "[float] submit job: ${toCmdString(cmd)}"
         return cmd
     }
 
@@ -212,7 +217,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             if (ret != 0) {
                 def m = """\
                 Unable to kill pending jobs
-                - cmd executed: ${cmd.join(' ')}
+                - cmd executed: ${toCmdString(cmd)}}
                 - exit status : $ret
                 - output      :
                 """.stripIndent()
@@ -243,7 +248,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             cmd << 'scancel'
             cmd << '-j'
             cmd << id
-            log.info "[float] cancel job: ${cmd.join(' ')}"
+            log.info "[float] cancel job: ${toCmdString(cmd)}"
             ret.add(cmd)
         }
         return ret
@@ -260,7 +265,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         def cmd = getCmdPrefix0()
         cmd << 'scancel'
         cmd << '-j'
-        log.info "[float] cancel job: ${cmd.join(' ')}"
+        log.info "[float] cancel job: ${toCmdString(cmd)}"
         return cmd
     }
 
@@ -298,7 +303,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         cmd << 'squeue'
         cmd << '--format'
         cmd << 'json'
-        log.info "[float] query job status: ${cmd.join(' ')}"
+        log.info "[float] query job status: ${toCmdString(cmd)}"
         return cmd
     }
 

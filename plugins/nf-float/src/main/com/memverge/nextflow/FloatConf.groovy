@@ -25,6 +25,11 @@ import org.apache.commons.lang.StringUtils
  */
 @CompileStatic
 class FloatConf {
+    static String MMC_ADDRESS = "MMC_ADDRESS"
+    static String MMC_USERNAME = "MMC_USERNAME"
+    static String MMC_PASSWORD = "MMC_PASSWORD"
+    static String ADDR_SEP = ","
+
     /** credentials for op center */
     String username
     String password
@@ -66,15 +71,14 @@ class FloatConf {
         if (node == null) {
             return
         }
-        username = node.username
-        password = node.password
+        username = node.username ?: System.getenv(MMC_USERNAME)
+        password = node.password ?: System.getenv(MMC_PASSWORD)
         if (node.address instanceof Collection) {
-            addresses = (node.address as Collection).collect {
-                it.toString()
-            }
+            addresses = node.address.collect {it.toString()}
         } else {
-            addresses = node.address.toString()
-                    .split(",")
+            String address = node.address ?: System.getenv(MMC_ADDRESS) ?: ""
+            addresses = address.toString()
+                    .split(ADDR_SEP)
                     .toList()
                     .stream()
                     .filter { it.size() > 0 }
@@ -117,6 +121,7 @@ class FloatConf {
     }
 
     List<String> getCliPrefix(String address = "") {
+        validate()
         if (StringUtils.length(address) == 0) {
             address = addresses[0]
         }

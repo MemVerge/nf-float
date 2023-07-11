@@ -122,6 +122,41 @@ float {
   * `commonExtra` allows the user to specify other submit parameters.  This parameter
     will be appended to every float submit command.
 
+### Configure with environment variables
+
+The plugin allows the user to set credentials with environment variables.
+If the credentials are not available in the configuration file, it will try
+reading these environment variables.
+
+* `MMC_ADDRESS` for operation center address.  Separate multiple addresses with `,`.
+* `MMC_USERNAME` for login username
+* `MMC_PASSWORD` for login password
+
+
+### Configure with NextFlow secrets
+
+User can use NextFlow secrets to input the credentials.  Here is an example:
+
+```bash
+nextflow secrets set MMC_USERNAME "..."
+nextflow secrets set MMC_PASSWORD "..."
+```
+
+In the configuration file, you can reference the secrets like this:
+
+```groovy
+float {
+    username = secrets.MMC_USERNAME
+    password = secrets.MMC_PASSWORD
+}
+```
+
+If the secret is not available, NextFlow reports error like this:
+
+```
+Unknown config secret 'MMC_USERNAME'
+```
+
 ## Task Sample
 
 For each process, users could supply their requirements for the CPU, memory and image.
