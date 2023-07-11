@@ -25,6 +25,19 @@ import spock.lang.Specification
 import java.nio.file.Paths
 
 class FloatGridExecutorTest extends Specification {
+    def setEnv(String key, String value) {
+        try {
+            def env = System.getenv();
+            def cl = env.getClass();
+            def field = cl.getDeclaredField("m");
+            field.setAccessible(true);
+            def writableEnv = (Map<String, String>) field.get(env);
+            writableEnv.put(key, value);
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to set environment variable", e);
+        }
+    }
+
     def newTestExecutor(Map config = null) {
         if (config == null) {
             config = [float: [address : addr,
@@ -511,5 +524,42 @@ class FloatGridExecutorTest extends Specification {
                 '-u', user,
                 '-p', pass,
                 'squeue', '--format', 'json']
+    }
+
+    def "retrieve the credentials from env"() {
+        given:
+        setEnv('MMC_ADDRESS', addr)
+        setEnv('MMC_USERNAME', user)
+        setEnv('MMC_PASSWORD', pass)
+        def exec = newTestExecutor(
+                [float: [cpu: cpu,
+                         mem: mem,
+                         nfs: nfs]])
+
+
+        exec.session.workDir = Paths.get(workDir)
+        def task = [:] as TaskRun
+
+        when:
+        task.config = [image: image] as TaskConfig
+        task.id = taskID
+        def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', nfs + ':' + workDir,
+                          '--image', image,
+                          '--cpu', cpu.toString(),
+                          '--mem', mem.toString(),
+                          '--job', script,
+                          '--name', jobID(taskID)].join(' ')
+
+        cleanup:
+        setEnv('MMC_ADDRESS', '')
+        setEnv('MMC_USERNAME', '')
+        setEnv('MMC_PASSWORD', '')
     }
 }
