@@ -129,10 +129,10 @@ Here is an example of a hello world workflow.
 
 ```groovy
 process sayHello {
-  executor = 'float'
-  image = 'cactus'
-  cpu = 2
-  mem = 4
+  executor 'float'
+  container 'cactus'
+  cpus 2
+  memory '4 G'
 
   output:
     stdout
