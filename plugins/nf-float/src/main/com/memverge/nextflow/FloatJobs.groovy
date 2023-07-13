@@ -42,7 +42,7 @@ class FloatJobs {
         job2oc = new ConcurrentHashMap<>()
         task2workDir = new ConcurrentHashMap<>()
         ocs = ocAddresses
-        def charset = (('A'..'Z')+('0'..'9')).join('')
+        def charset = (('a'..'z')+('0'..'9')).join('')
         taskPrefix = RandomStringUtils.random(
                 6, charset.toCharArray())
     }

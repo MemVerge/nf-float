@@ -69,11 +69,11 @@ class FloatGridExecutorMultiOCTest extends Specification {
         cmd1.join(' ') == "float -a fb -u admin -p password sbatch " +
                 "--dataVolume ${dataVol} --image ${image} " +
                 "--cpu ${cpu} --mem ${mem} --job ${script}" +
-                " --name tJob-${taskID}"
+                " --customTag nf-job-id:tJob-${taskID}"
         cmd2.join(' ') == "float -a fa -u admin -p password sbatch " +
                 "--dataVolume ${dataVol} --image ${image} " +
                 "--cpu ${cpu} --mem ${mem} --job ${script}" +
-                " --name tJob-${taskID}"
+                " --customTag nf-job-id:tJob-${taskID}"
     }
 
     def "get queue status commands"() {
@@ -116,10 +116,10 @@ class FloatGridExecutorMultiOCTest extends Specification {
         cmd1.join(' ') == "float -a fb -u admin -p password sbatch " +
                 "--dataVolume ${dataVol} --image ${image} " +
                 "--cpu ${cpu} --mem ${mem} --job ${script}" +
-                " --name tJob-${taskID}"
+                " --customTag nf-job-id:tJob-${taskID}"
         cmd2.join(' ') == "float -a fa -u admin -p password sbatch " +
                 "--dataVolume ${dataVol} --image ${image} " +
                 "--cpu ${cpu} --mem ${mem} --job ${script}" +
-                " --name tJob-${taskID}"
+                " --customTag nf-job-id:tJob-${taskID}"
     }
 }

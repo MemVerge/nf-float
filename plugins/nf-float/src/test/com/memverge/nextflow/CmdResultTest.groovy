@@ -116,7 +116,11 @@ class CmdResultTest extends Specification {
                 "name": "cactus-c5d.large",                                                                                              
                 "user": "admin",                                                                                                         
                 "imageID": "docker.io/memverge/cactus:latest",                                                                           
-                "status": "FailToExecute"                                                                                                                                                                                                                                                                                                                         
+                "status": "FailToExecute",
+                "customTags": {
+                    "nf-job-id": "job-a",
+                    "a": "apple"
+                }                                                                                                                                                                                                                                                                                                                         
             },
             {
                 "id": "u5x3sSLe0p3OznGavmYu3",
@@ -124,7 +128,11 @@ class CmdResultTest extends Specification {
                 "workingHost": "3.143.251.235 (2Core4GB/Spot)",
                 "user": "admin",
                 "imageID": "docker.io/memverge/cactus:latest",
-                "status": "Executing"
+                "status": "Executing",
+                "customTags": {
+                    "b": "banana",
+                    "nf-job-id": "job-b"
+                }
             }
         ]"""
         def stMap = res.getQStatus()
@@ -133,9 +141,9 @@ class CmdResultTest extends Specification {
 
         then:
         st1.status == 'FailToExecute'
-        st1.taskID == 'cactus-c5d.large'
+        st1.taskID == 'job-a'
         st2.status == 'Executing'
-        st2.taskID == 'cactus-t3a.medium'
+        st2.taskID == 'job-b'
     }
 
     def "get queue empty"() {

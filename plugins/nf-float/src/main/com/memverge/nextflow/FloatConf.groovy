@@ -29,6 +29,7 @@ class FloatConf {
     static String MMC_USERNAME = "MMC_USERNAME"
     static String MMC_PASSWORD = "MMC_PASSWORD"
     static String ADDR_SEP = ","
+    static String NF_JOB_ID = "nf-job-id"
 
     /** credentials for op center */
     String username

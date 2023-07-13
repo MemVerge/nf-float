@@ -94,8 +94,9 @@ class CmdResult {
             for (i in obj) {
                 def id = i.id as String
                 def status = i.status as String
-                def taskID = i.name as String
-                if (id && status) {
+                def tags = i.customTags as Map
+                String taskID = tags ? tags[FloatConf.NF_JOB_ID] : ""
+                if (id && status && taskID) {
                     ret[id] = new JobStatus(taskID, status)
                 }
             }

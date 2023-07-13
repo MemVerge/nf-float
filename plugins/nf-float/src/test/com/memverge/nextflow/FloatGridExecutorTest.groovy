@@ -53,7 +53,7 @@ class FloatGridExecutorTest extends Specification {
     }
 
     def jobID(TaskId id) {
-        return "$tJob-$id"
+        return "${FloatConf.NF_JOB_ID}:$tJob-$id"
     }
 
     def "get the prefix of kill command"() {
@@ -133,7 +133,7 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', cpu.toString(),
                           '--mem', mem.toString(),
                           '--job', script,
-                          '--name', jobID(taskID)].join(' ')
+                          '--customTag', jobID(taskID)].join(' ')
     }
 
     def "add default local mount point"() {
@@ -160,7 +160,7 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', cpu.toString(),
                           '--mem', mem.toString(),
                           '--job', script,
-                          '--name', jobID(taskID)].join(' ')
+                          '--customTag', jobID(taskID)].join(' ')
     }
 
     def "use cpus, memory and container"() {
@@ -187,7 +187,7 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', '8',
                           '--mem', '16',
                           '--job', script,
-                          '--name', jobID(taskID)].join(' ')
+                          '--customTag', jobID(taskID)].join(' ')
     }
 
     def "add common extras"() {
@@ -216,7 +216,7 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', '2',
                           '--mem', '4',
                           '--job', script,
-                          '--name', jobID(taskID),
+                          '--customTag', jobID(taskID),
                           '-t', 'small', '-f'].join(" ")
     }
 
@@ -242,7 +242,7 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', '2',
                           '--mem', '4',
                           '--job', script,
-                          '--name', jobID(taskID),
+                          '--customTag', jobID(taskID),
                           '-f', '-t', 'small'].join(' ')
     }
 
@@ -259,7 +259,7 @@ class FloatGridExecutorTest extends Specification {
 
         when:
         task.config = [nfs  : nfs,
-                       extra: '--name hello',] as TaskConfig
+                       extra: '--customTag hello',] as TaskConfig
         task.id = taskID
         def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
@@ -273,9 +273,9 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', '2',
                           '--mem', '4',
                           '--job', script,
-                          '--name', jobID(taskID),
+                          '--customTag', jobID(taskID),
                           '-t', 'small', '-f',
-                          '--name', 'hello'].join(' ')
+                          '--customTag', 'hello'].join(' ')
     }
 
     def "config level cpu and memory"() {
@@ -307,7 +307,7 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', cpu.toString(),
                           '--mem', mem.toString(),
                           '--job', script,
-                          '--name', jobID(taskID)].join(' ')
+                          '--customTag', jobID(taskID)].join(' ')
     }
 
     def "use default cpu, memory and image"() {
@@ -337,7 +337,7 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', '2',
                           '--mem', '4',
                           '--job', script,
-                          '--name', jobID(taskID)].join(' ')
+                          '--customTag', jobID(taskID)].join(' ')
     }
 
     def "use default nfs and work dir"() {
@@ -367,7 +367,7 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', cpu.toString(),
                           '--mem', mem.toString(),
                           '--job', script,
-                          '--name', jobID(taskID)].join(' ')
+                          '--customTag', jobID(taskID)].join(' ')
     }
 
     def "parse data volume"() {
@@ -399,7 +399,7 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', cpu.toString(),
                           '--mem', mem.toString(),
                           '--job', script,
-                          '--name', jobID(taskID),
+                          '--customTag', jobID(taskID),
                           '-M', 'cpu.upperBoundDuration=5s',
                           '--dataVolume', '"[size=50]":/BWA_BASE'].join(' ')
     }
@@ -414,70 +414,100 @@ class FloatGridExecutorTest extends Specification {
                 "name": "tJob-0",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
-                "status": "Submitted"
+                "status": "Submitted",
+                "customTags": {
+                    "nf-job-id": "tJob-0"
+                }
             },
             {                                                           
                 "id": "task1",                          
                 "name": "tJob-1",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
-                "status": "Initializing"
+                "status": "Initializing",
+                "customTags": {
+                    "nf-job-id": "tJob-1"
+                }
             },
             {                                                           
                 "id": "task2",                          
                 "name": "tJob-2",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
-                "status": "Executing"
+                "status": "Executing",
+                "customTags": {
+                    "nf-job-id": "tJob-2"
+                }
             },
             {                                                           
                 "id": "task3",                          
                 "name": "tJob-3",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
-                "status": "Floating"
+                "status": "Floating",
+                "customTags": {
+                    "nf-job-id": "tJob-3"
+                }
             },
             {                                                           
                 "id": "task4",                          
                 "name": "tJob-4",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
-                "status": "Completed"
+                "status": "Completed",
+                "customTags": {
+                    "nf-job-id": "tJob-4"
+                }
             },
             {                                                           
                 "id": "task5",                          
                 "name": "tJob-5",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
-                "status": "Cancelled"
+                "status": "Cancelled",
+                "customTags": {
+                    "nf-job-id": "tJob-5"
+                }
             },
             {                                                           
                 "id": "task6",                          
                 "name": "tJob-6",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
-                "status": "FailToComplete"
+                "status": "FailToComplete",
+                "customTags": {
+                    "nf-job-id": "tJob-6"
+                }
             },
             {                                                           
                 "id": "task7",                          
                 "name": "tJob-7",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
-                "status": "FailToExecute"
+                "status": "FailToExecute",
+                "customTags": {
+                    "nf-job-id": "tJob-7"
+                }
             },
             {                                                           
                 "id": "task8",                          
                 "name": "tJob-8",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
-                "status": "Completed"
+                "status": "Completed",
+                "customTags": {
+                    "nf-job-id": "tJob-8"
+                }
             },
             {                                                           
                 "id": "task9",                          
                 "name": "tJob-9",                                                                                            
                 "user": "admin",                                        
                 "imageID": "docker.io/memverge/cactus:latest",          
-                "status": "Starting"
+                "status": "Starting",
+                "customTags": {
+                    "nf-job-id": "tJob-9"
+                }
             }
         ]                          
         """.stripIndent()
@@ -555,7 +585,7 @@ class FloatGridExecutorTest extends Specification {
                           '--cpu', cpu.toString(),
                           '--mem', mem.toString(),
                           '--job', script,
-                          '--name', jobID(taskID)].join(' ')
+                          '--customTag', jobID(taskID)].join(' ')
 
         cleanup:
         setEnv('MMC_ADDRESS', '')
