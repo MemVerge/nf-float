@@ -35,7 +35,7 @@ class FloatJobs {
     private String taskPrefix
 
     FloatJobs(Collection<String> ocAddresses) {
-        if (ocAddresses.size() == 0) {
+        if (!ocAddresses) {
             throw new IllegalArgumentException('op-center address is empty')
         }
         job2status = new ConcurrentHashMap<>()

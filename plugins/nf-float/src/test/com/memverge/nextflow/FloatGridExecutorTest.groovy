@@ -592,4 +592,46 @@ class FloatGridExecutorTest extends Specification {
         setEnv('MMC_USERNAME', '')
         setEnv('MMC_PASSWORD', '')
     }
+
+    def "get image with default registry"() {
+        given:
+        def exec = newTestExecutor(
+                [podman : [registry: 'quay.io'],
+                 process: [address: addr]])
+        def task = [:] as TaskRun
+
+        when:
+        task.config = ['image': image] as TaskConfig
+
+        then:
+        exec.getImage(task) == "quay.io/$image"
+    }
+
+    def "get image without default registry"() {
+        given:
+        def exec = newTestExecutor(
+                [process: [address: addr]])
+        def task = [:] as TaskRun
+
+        when:
+        task.config = ['image': image] as TaskConfig
+
+        then:
+        exec.getImage(task) == "$image"
+    }
+
+    def "get image with default registry and specific image"() {
+        given:
+        def exec = newTestExecutor(
+                [podman : [registry: 'quay.io'],
+                 process: [address: addr]])
+        def task = [:] as TaskRun
+        def dImage = "docker.io/$image"
+
+        when:
+        task.config = ['image': dImage] as TaskConfig
+
+        then:
+        exec.getImage(task) == dImage
+    }
 }
