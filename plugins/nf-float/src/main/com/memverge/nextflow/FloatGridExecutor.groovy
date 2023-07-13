@@ -200,6 +200,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     @Override
     List<String> getSubmitCommandLine(TaskRun task, Path scriptFile) {
         validateTaskConf(task.config)
+        String tag = "${FloatConf.NF_JOB_ID}:${floatJobs.getJobName(task.id)}"
         def cmd = getSubmitCmdPrefix()
         cmd << 'sbatch'
         cmd << '--dataVolume'
@@ -212,8 +213,8 @@ class FloatGridExecutor extends AbstractGridExecutor {
         cmd << getMem(task)
         cmd << '--job'
         cmd << scriptFile.toString()
-        cmd << '--name'
-        cmd << floatJobs.getJobName(task.id)
+        cmd << '--customTag'
+        cmd << tag
         cmd.addAll(getExtra(task))
         log.info "[float] submit job: ${toCmdString(cmd)}"
         return cmd
