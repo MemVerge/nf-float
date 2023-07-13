@@ -16,7 +16,9 @@
 package com.memverge.nextflow
 
 import groovy.transform.CompileStatic
+import groovy.transform.Memoized
 import nextflow.exception.AbortOperationException
+import nextflow.processor.TaskRun
 import nextflow.util.MemoryUnit
 import org.apache.commons.lang.StringUtils
 

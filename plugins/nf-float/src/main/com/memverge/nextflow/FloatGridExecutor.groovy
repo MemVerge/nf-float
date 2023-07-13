@@ -16,6 +16,7 @@
 package com.memverge.nextflow
 
 import groovy.transform.CompileStatic
+import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import nextflow.executor.AbstractGridExecutor
 import nextflow.extension.FilesEx
@@ -139,7 +140,34 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return floatConf.cpu
     }
 
-    private String getImage(TaskRun task) {
+    String getImage(TaskRun task) {
+        def image = getImageFromConf(task)
+        def registry = getDftRegistry()
+        if (image.startsWith(registry)) {
+            return image
+        }
+        if (!image.split('/')[0].contains('.')) {
+            return "$registry/$image"
+        }
+        return image
+    }
+
+    @Memoized
+    private String getDftRegistry() {
+        def engines = ['podman', 'docker']
+        for (String engine : engines) {
+            def config = session.config?.get(engine) as Map
+            if (config) {
+                def registry = config.registry
+                if (registry) {
+                    return registry
+                }
+            }
+        }
+        return ''
+    }
+
+    private String getImageFromConf(TaskRun task) {
         def image = task.config.image
         if (image) {
             return image.toString()
