@@ -16,9 +16,7 @@
 package com.memverge.nextflow
 
 import groovy.transform.CompileStatic
-import groovy.transform.Memoized
 import nextflow.exception.AbortOperationException
-import nextflow.processor.TaskRun
 import nextflow.util.MemoryUnit
 import org.apache.commons.lang.StringUtils
 
@@ -66,7 +64,30 @@ class FloatConf {
                 ret.parseNode(config.process)
             }
         }
+        ret.checkEnv()
         return ret
+    }
+
+    def checkEnv() {
+        if (!username) {
+            username = System.getenv(MMC_USERNAME)
+        }
+        if (!password) {
+            password = System.getenv(MMC_PASSWORD)
+        }
+        if (!addresses) {
+            addresses = parseAddr(System.getenv(MMC_ADDRESS))
+        }
+    }
+
+    private static Collection<String> parseAddr(Object address) {
+        return address.toString()
+                .split(ADDR_SEP)
+                .toList()
+                .stream()
+                .filter { it.size() > 0 }
+                .map { it.trim() }
+                .collect()
     }
 
     void parseNode(Object obj) {
@@ -74,41 +95,26 @@ class FloatConf {
         if (node == null) {
             return
         }
-        username = node.username ?: System.getenv(MMC_USERNAME)
-        password = node.password ?: System.getenv(MMC_PASSWORD)
-        if (node.address instanceof Collection) {
-            addresses = node.address.collect {it.toString()}
-        } else {
-            String address = node.address ?: System.getenv(MMC_ADDRESS) ?: ""
-            addresses = address.toString()
-                    .split(ADDR_SEP)
-                    .toList()
-                    .stream()
-                    .filter { it.size() > 0 }
-                    .map { it.trim() }
-                    .collect()
+        username = node.username ? node.username : username
+        password = node.password ? node.password : password
+        if (node.address) {
+            if (node.address instanceof Collection) {
+                addresses = node.address.collect { it.toString() }
+            } else {
+                addresses = parseAddr(node.address)
+            }
         }
-        commonExtra = node.commonExtra
-        nfs = node.nfs
-        if (node.cpu) {
-            cpu = node.cpu as String
-        }
-        if (node.cpus) {
-            cpu = node.cpus as String
-        }
+        commonExtra = node.commonExtra ? node.commonExtra : commonExtra
+        nfs = node.nfs ? node.nfs : nfs
+        cpu = node.cpu ? node.cpu : cpu
+        cpu = node.cpus ? node.cpus : cpu
         if (node.mem) {
             def unit = "${node.mem as String} GB"
             memGB = MemoryUnit.of(unit)
         }
-        if (node.memory) {
-            memGB = MemoryUnit.of(node.memory as String)
-        }
-        if (node.image) {
-            image = node.image as String
-        }
-        if (node.container) {
-            image = node.container as String
-        }
+        memGB = node.memory ? MemoryUnit.of(node.memory as String) : memGB
+        image = node.image ? node.image : image
+        image = node.container ? node.container : image
     }
 
     void validate() {

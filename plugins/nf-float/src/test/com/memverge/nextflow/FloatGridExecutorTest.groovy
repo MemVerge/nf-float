@@ -634,4 +634,39 @@ class FloatGridExecutorTest extends Specification {
         then:
         exec.getImage(task) == dImage
     }
+
+    def "use both float and process"() {
+        given:
+        def exec = newTestExecutor(
+                [float  : [address : addr,
+                           username: user,
+                           password: pass,
+                           image   : image,
+                           cpus    : 8,
+                           memory  : '16 G'],
+                 process: [a     : 'a',
+                           memory: '10 G']])
+
+        String dataVolume = nfs + ':/data'
+        def task = [:] as TaskRun
+        def config = [nfs  : dataVolume,
+                      image: 'ubuntu'] as TaskConfig
+
+        when:
+        task.config = config
+        task.id = taskID
+        def cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ') == ['float', '-a', addr,
+                          '-u', user,
+                          '-p', pass,
+                          'sbatch',
+                          '--dataVolume', dataVolume,
+                          '--image', 'ubuntu',
+                          '--cpu', '8',
+                          '--mem', '10',
+                          '--job', script,
+                          '--customTag', jobID(taskID)].join(' ')
+    }
 }
