@@ -16,6 +16,8 @@
 package com.memverge.nextflow
 
 import groovy.transform.CompileStatic
+import groovy.transform.Memoized
+import groovy.util.logging.Slf4j
 import nextflow.exception.AbortOperationException
 import nextflow.util.MemoryUnit
 import org.apache.commons.lang.StringUtils
@@ -23,6 +25,7 @@ import org.apache.commons.lang.StringUtils
 /**
  * @author Cedric Zhuang <cedric.zhuang@memverge.com>
  */
+@Slf4j
 @CompileStatic
 class FloatConf {
     static String MMC_ADDRESS = "MMC_ADDRESS"
@@ -38,9 +41,6 @@ class FloatConf {
     String nfs
 
     /** parameters for submitting the tasks */
-    String cpu = '2'
-    MemoryUnit memGB = MemoryUnit.of('4 GB')
-    String image = 'cactus'
     String commonExtra
 
     /** some extra default parameters */
@@ -56,65 +56,38 @@ class FloatConf {
     static FloatConf getConf(Map config) {
         FloatConf ret = new FloatConf()
 
-        if (config) {
-            if (config.float instanceof Map) {
-                ret.parseNode(config.float)
-            }
-            if (config.process instanceof Map) {
-                ret.parseNode(config.process)
-            }
+        if (!config || config.float !instanceof Map)
+            return ret
+
+        Map node = config.float as Map
+        ret.username = node.username ?: System.getenv(MMC_USERNAME)
+        ret.password = node.password ?: System.getenv(MMC_PASSWORD)
+        if (node.address instanceof Collection) {
+            ret.addresses = node.address.collect { it.toString() }
+        } else {
+            String address = node.address ?: System.getenv(MMC_ADDRESS) ?: ""
+            ret.addresses = address
+                    .tokenize(ADDR_SEP)
+                    .collect { it.trim() }
+                    .findAll { it.size() > 0 }
         }
-        ret.checkEnv()
+        ret.nfs = node.nfs
+        ret.commonExtra = node.commonExtra
+
+        if (node.cpu)
+            log.warn "Config option `float.cpu` is no longer supported, use `process.cpus` instead"
+        if (node.cpus)
+            log.warn "Config option `float.cpus` is no longer supported, use `process.cpus` instead"
+        if (node.mem)
+            log.warn "Config option `float.mem` is no longer supported, use `process.memory` instead"
+        if (node.memory)
+            log.warn "Config option `float.memory` is no longer supported, use `process.memory` instead"
+        if (node.image)
+            log.warn "Config option `float.image` is no longer supported, use `process.container` instead"
+        if (node.container)
+            log.warn "Config option `float.container` is no longer supported, use `process.container` instead"
+
         return ret
-    }
-
-    def checkEnv() {
-        if (!username) {
-            username = System.getenv(MMC_USERNAME)
-        }
-        if (!password) {
-            password = System.getenv(MMC_PASSWORD)
-        }
-        if (!addresses) {
-            addresses = parseAddr(System.getenv(MMC_ADDRESS))
-        }
-    }
-
-    private static Collection<String> parseAddr(Object address) {
-        return address.toString()
-                .split(ADDR_SEP)
-                .toList()
-                .stream()
-                .filter { it.size() > 0 }
-                .map { it.trim() }
-                .collect()
-    }
-
-    void parseNode(Object obj) {
-        Map node = obj as Map
-        if (node == null) {
-            return
-        }
-        username = node.username ? node.username : username
-        password = node.password ? node.password : password
-        if (node.address) {
-            if (node.address instanceof Collection) {
-                addresses = node.address.collect { it.toString() }
-            } else {
-                addresses = parseAddr(node.address)
-            }
-        }
-        commonExtra = node.commonExtra ? node.commonExtra : commonExtra
-        nfs = node.nfs ? node.nfs : nfs
-        cpu = node.cpu ? node.cpu : cpu
-        cpu = node.cpus ? node.cpus : cpu
-        if (node.mem) {
-            def unit = "${node.mem as String} GB"
-            memGB = MemoryUnit.of(unit)
-        }
-        memGB = node.memory ? MemoryUnit.of(node.memory as String) : memGB
-        image = node.image ? node.image : image
-        image = node.container ? node.container : image
     }
 
     void validate() {
