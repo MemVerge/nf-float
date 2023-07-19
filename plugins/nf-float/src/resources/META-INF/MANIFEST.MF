@@ -3,4 +3,4 @@ Plugin-Class: com.memverge.nextflow.FloatPlugin
 Plugin-Id: nf-float
 Plugin-Version: 0.1.8
 Plugin-Provider: MemVerge Corp.
-Plugin-Requires: >=22.10.0
+Plugin-Requires: >=23.04.0

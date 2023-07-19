@@ -109,16 +109,6 @@ float {
   * `address` address of your operation center(s).  Separate multiple addresses with `,`.
   * `username` and `password` are the credentials for your operation center
   * `nfs` points to the location of the NFS.
-  * `image` (deprecated) is an optional property that specifies the default image for a float process.
-  * `container` is an optional property that specifies the default image for a float process.
-  * `cpu` (deprecated) is an optional property that specifies the default number of 
-    CPU cores for a float process, the default value is `2`.
-  * `cpus` is an optional property that specifies the default number of
-    CPU cores for a float process, the default value is `2`.
-  * `mem` (deprecated) is an optional property that specifies the default size of memory for a
-    float process in GB.  The default value is `4`.
-  * `memory` is an optional property that specifies the default size of memory for a
-    float process in GB.  The default value is `'4 GB'`.
   * `commonExtra` allows the user to specify other submit parameters.  This parameter
     will be appended to every float submit command.
 
@@ -133,9 +123,9 @@ reading these environment variables.
 * `MMC_PASSWORD` for login password
 
 
-### Configure with NextFlow secrets
+### Configure with Nextflow secrets
 
-User can use NextFlow secrets to input the credentials.  Here is an example:
+User can use Nextflow secrets to input the credentials.  Here is an example:
 
 ```bash
 nextflow secrets set MMC_USERNAME "..."
@@ -151,7 +141,7 @@ float {
 }
 ```
 
-If the secret is not available, NextFlow reports error like this:
+If the secret is not available, Nextflow reports error like this:
 
 ```
 Unknown config secret 'MMC_USERNAME'
@@ -159,7 +149,7 @@ Unknown config secret 'MMC_USERNAME'
 
 ## Task Sample
 
-For each process, users could supply their requirements for the CPU, memory and image.
+For each process, users could supply their requirements for the CPU, memory and container image using the standard Nextflow process directives.
 Here is an example of a hello world workflow.
 
 ```groovy
@@ -167,13 +157,13 @@ process sayHello {
   executor 'float'
   container 'cactus'
   cpus 2
-  memory '4 G'
+  memory 4.GB
 
   output:
     stdout
 
   """
-  echo "Hello from NextFlow!"
+  echo "Hello from Nextflow!"
   """
 }
 
@@ -182,13 +172,10 @@ workflow {
 }
 ```
 
-* `executor = 'float'` - tells Nextflow to run the workflow with `float`.
-* `cpu` - (deprecated) specifies the number of cores required by this process.
+* `executor 'float'` - tells Nextflow to execute tasks with Float.
 * `cpus` - specifies the number of cores required by this process.
-* `mem` - (deprecated) specifies the number of memory required by this process in GB.
-* `memory` specify the memories.  Note that the value is a string, such as `'5 GB'`
-* `image` - (deprecated) is the name of the container image.
-* `contaner` - the same as `image`
+* `memory` specifies the memory.
+* `container` - specifies the container image.
 * `extra` - specifies extra parameters for the job.  It will be merged with
             the `commonExtra` parameter. 
 
@@ -197,7 +184,7 @@ workflow {
 Use the `nextflow` command to run the workflow.  We need to include our configuration
 file and task file as arguments.  Here is an example.
 
-```
+```bash
 ./nextflow run samples/tutorial.nf -c conf/float-rt.conf
 ```
 
@@ -270,7 +257,7 @@ configure a local Nextflow build with the following steps:
 
 Run following command to create the plugin zip.
 
-```
+```bash
 ./gradlew makeZip
 ```
 

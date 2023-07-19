@@ -16,12 +16,13 @@
 package com.memverge.nextflow
 
 import groovy.transform.CompileStatic
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
+import nextflow.exception.ProcessUnrecoverableException
 import nextflow.executor.AbstractGridExecutor
 import nextflow.extension.FilesEx
-import nextflow.processor.TaskConfig
+import nextflow.fusion.FusionHelper
 import nextflow.processor.TaskRun
+import nextflow.util.Escape
 import nextflow.util.ServiceName
 import org.apache.commons.lang.StringUtils
 
@@ -40,7 +41,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
     private AtomicInteger serial = new AtomicInteger()
 
-    private String _binDir
+    private String binDir
 
     private FloatConf getFloatConf() {
         return FloatConf.getConf(session.config)
@@ -60,26 +61,33 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     @Override
-    protected String getHeaderToken() {
-        return ''
+    FloatTaskHandler createTaskHandler(TaskRun task) {
+        assert task
+        assert task.workDir
+
+        new FloatTaskHandler(task, this)
     }
 
-    @Override
-    protected List<String> getDirectives(TaskRun task, List<String> initial) {
+    protected String getHeaderScript(TaskRun task) {
         log.info "[float] switch task ${task.id} to ${task.workDirStr}"
         floatJobs.setWorkDir(task.id, task.workDirStr)
 
-        // go to the work directory
-        initial << 'cd'
-        initial << task.workDirStr
+        def result = ""
+        result += "NXF_CHDIR=${Escape.path(task.workDir)}\n"
 
         if (needBinDir()) {
             // add path to the script
-            initial << 'export'
-            initial << 'PATH=$PATH:' + _binDir + '/bin'
+            result += "export PATH=\$PATH:${binDir}/bin\n"
         }
-        return initial
+
+        return result
     }
+
+    @Override
+    protected String getHeaderToken() { null }
+
+    @Override
+    protected List<String> getDirectives(TaskRun task, List<String> initial) { null }
 
     private boolean needBinDir() {
         return session.binDir && !session.binDir.empty() && !session.disableRemoteBinDir
@@ -88,107 +96,19 @@ class FloatGridExecutor extends AbstractGridExecutor {
     private void uploadBinDir() {
         // upload local binaries
         if (needBinDir()) {
-            _binDir = getTempDir()
-            log.info "Uploading local `bin` ${session.binDir} to ${_binDir}/bin"
-            FilesEx.copyTo(session.binDir, _binDir)
+            binDir = getTempDir()
+            log.info "Uploading local `bin` ${session.binDir} to ${binDir}/bin"
+            FilesEx.copyTo(session.binDir, binDir)
         }
     }
 
-    private void validateTaskConf(TaskConfig config) {
-        if (!config.nfs && !floatConf.nfs) {
-            log.error '[float] missing "nfs": need a nfs to run float jobs'
-        }
-        if (!config.image && !config.container) {
-            log.error '[float] missing "image": container image'
-        }
-        if (!config.cpu) {
-            if (!config.cpus) {
-                log.info '[float] missing "cpus": number of cpu cores, use default'
-            }
-        }
-        if (!config.mem && !config.memory) {
-            log.info '[float] missing "memory": size of memory in GB, use default'
-        }
+    private String getDataVolume(TaskRun task) {
+        return floatConf.nfs ?: getWorkDir().toUriString()
     }
 
-    private String getNfs(TaskRun task) {
-        def conf = task.config
-        String nfs
-        if (!conf.nfs) {
-            nfs = floatConf.nfs
-        } else {
-            nfs = conf.nfs
-        }
-        int proto = nfs.indexOf('//')
-        int colon = nfs.indexOf(':', proto + 2)
-        if (colon == -1) {
-            // use the workDir as local mount point
-            nfs += ':' + session.workDir
-        }
-        return nfs
-    }
-
-    private String getCpu(TaskRun task) {
-        def cpu = task.config.cpu
-        if (cpu) {
-            return cpu.toString()
-        }
-        cpu = task.config.cpus
-        if (cpu) {
-            return task.config.getCpus().toString()
-        }
-        return floatConf.cpu
-    }
-
-    String getImage(TaskRun task) {
-        def image = getImageFromConf(task)
-        def registry = getDftRegistry()
-        if (image.startsWith(registry)) {
-            return image
-        }
-        if (!image.split('/')[0].contains('.')) {
-            return "$registry/$image"
-        }
-        return image
-    }
-
-    @Memoized
-    private String getDftRegistry() {
-        def engines = ['podman', 'docker']
-        for (String engine : engines) {
-            def config = session.config?.get(engine) as Map
-            if (config) {
-                def registry = config.registry
-                if (registry) {
-                    return registry
-                }
-            }
-        }
-        return ''
-    }
-
-    private String getImageFromConf(TaskRun task) {
-        def image = task.config.image
-        if (image) {
-            return image.toString()
-        }
-        image = task.config.getContainer()
-        if (image) {
-            return image.toString()
-        }
-        return floatConf.image
-    }
-
-    private String getMem(TaskRun task) {
-        def mem = task.config.mem
-        if (mem) {
-            return mem.toString()
-        }
-        mem = task.config.getMemory()
-        if (mem) {
-            return task.config.getMemory().toGiga().toString()
-        }
-        return floatConf.memGB.toGiga().toString()
+    private String getMemory(TaskRun task) {
+        final mem = task.config.getMemory()
+        return mem ? mem.toGiga().toString() : '4'
     }
 
     private Collection<String> getExtra(TaskRun task) {
@@ -227,22 +147,29 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
     @Override
     List<String> getSubmitCommandLine(TaskRun task, Path scriptFile) {
-        validateTaskConf(task.config)
+        if (task.config.nfs)
+            log.warn '[float] process `nfs` is no longer supported, use `float.nfs` config option instead'
+        if (task.config.cpu)
+            log.warn '[float] process `cpu` is no longer supported, use `cpus` directive instead'
+        if (task.config.mem)
+            log.warn '[float] process `mem` is no longer supported, use `memory` directive instead'
+        if (task.config.image)
+            log.warn '[float] process `image` is no longer supported, use `container` directive instead'
+
+        final container = task.getContainer()
+        if (!container)
+            throw new ProcessUnrecoverableException("Process `${task.lazyName()}` failed because the container image was not specified")
+
         String tag = "${FloatConf.NF_JOB_ID}:${floatJobs.getJobName(task.id)}"
+
         def cmd = getSubmitCmdPrefix()
         cmd << 'sbatch'
-        cmd << '--dataVolume'
-        cmd << getNfs(task)
-        cmd << '--image'
-        cmd << getImage(task)
-        cmd << '--cpu'
-        cmd << getCpu(task)
-        cmd << '--mem'
-        cmd << getMem(task)
-        cmd << '--job'
-        cmd << scriptFile.toString()
-        cmd << '--customTag'
-        cmd << tag
+        cmd << '--dataVolume' << getDataVolume(task)
+        cmd << '--image' << container
+        cmd << '--cpu' << task.config.getCpus().toString()
+        cmd << '--mem' << getMemory(task)
+        cmd << '--job' << scriptFile.toUriString()
+        cmd << '--customTag' << tag
         cmd.addAll(getExtra(task))
         log.info "[float] submit job: ${toCmdString(cmd)}"
         return cmd
@@ -397,4 +324,14 @@ class FloatGridExecutor extends AbstractGridExecutor {
             'NoAvailableHost'  : QueueStatus.ERROR,
             'Unknown'          : QueueStatus.UNKNOWN,
     ]
+
+    @Override
+    boolean isContainerNative() {
+        return true
+    }
+
+    @Override
+    boolean isFusionEnabled() {
+        return FusionHelper.isFusionEnabled(session)
+    }
 }
