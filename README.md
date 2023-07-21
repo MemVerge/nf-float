@@ -1,15 +1,8 @@
 # nf-float plugin
 
-This project contains the Nextflow plugin for MemVerge Memory Machine Cloud 
-(aka. float).
+This project contains the Nextflow plugin for MemVerge Memory Machine Cloud (aka. float).
 
-`FloatGridExecutor` extends the `AbstractGridExecutor` and tells Nextflow how
-to run the workload with `float` command line.  
-
-Please make sure your nextflow node shares the same work directory with the
-worker nodes/containers.  It should be a shared file system such as NFS or S3FS.
-
-Otherwise, the worker nodes won't be able to see the task files.
+It includes the Float executor, which allows Nextflow to execute tasks through the `float` CLI.
 
 ## License
 
@@ -17,12 +10,7 @@ Otherwise, the worker nodes won't be able to see the task files.
 
 ## Installation
 
-To run `float` with Nextflow, you must install the Nextflow and the float plugin.
-
-__Note__
-
-Nextflow and the plugin should be installed on a node that have 
-access to the NFS which is available to all worker nodes.
+To run Nextflow with `float`, you must install Nextflow and the `nf-float` plugin.
 
 ### Install Nextflow
 
@@ -30,16 +18,9 @@ Enter this command in your terminal:
 ```
 curl -s https://get.nextflow.io | bash
 ```
-It creates a file `nextflow` in the current dir.
+It creates the `nextflow` command in the current directory.
 
-__Note__:
-
-Nextflow requires java 11 or higher.  You may need to install openjdk 11 
-for your environment.
-
-You could always find the latest installation
-guide at https://www.nextflow.io/docs/latest/getstarted.html.
-
+Nextflow requires Java 11 or higher. See the [Nextflow documentation](https://www.nextflow.io/docs/latest/getstarted.html) for more details.
 
 ### Install nf-float plugin
 
@@ -108,7 +89,7 @@ float {
   center and the proper credentials.
   * `address` address of your operation center(s).  Separate multiple addresses with `,`.
   * `username` and `password` are the credentials for your operation center
-  * `nfs` points to the location of the NFS.
+  * `nfs` points to the location of the shared data volume.
   * `commonExtra` allows the user to specify other submit parameters.  This parameter
     will be appended to every float submit command.
 
@@ -121,7 +102,6 @@ reading these environment variables.
 * `MMC_ADDRESS` for operation center address.  Separate multiple addresses with `,`.
 * `MMC_USERNAME` for login username
 * `MMC_PASSWORD` for login password
-
 
 ### Configure with Nextflow secrets
 
@@ -145,6 +125,20 @@ If the secret is not available, Nextflow reports error like this:
 
 ```
 Unknown config secret 'MMC_USERNAME'
+```
+
+### Use S3 as work directory
+
+Float also supports using S3 to store the work directory. In this case, you do not need to have S3 mounted in your launch environment. You must specify the S3 path along with your AWS credentials in the `nfs` config option.
+
+Here is an example using Nextflow secrets:
+
+```groovy
+workDir = 's3://my-bucket/work'
+
+float {
+    nfs = "[accesskey=${secrets.AWS_ACCESS_KEY},secret=${secrets.AWS_SECRET_KEY},mode=rw]s3://my-bucket/work:/my-bucket/work"
+}
 ```
 
 ## Task Sample

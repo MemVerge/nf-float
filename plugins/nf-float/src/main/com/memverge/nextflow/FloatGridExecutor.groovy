@@ -20,7 +20,6 @@ import groovy.util.logging.Slf4j
 import nextflow.exception.ProcessUnrecoverableException
 import nextflow.executor.AbstractGridExecutor
 import nextflow.extension.FilesEx
-import nextflow.fusion.FusionHelper
 import nextflow.processor.TaskRun
 import nextflow.util.Escape
 import nextflow.util.ServiceName
@@ -103,7 +102,22 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     private String getDataVolume(TaskRun task) {
-        return floatConf.nfs ?: getWorkDir().toUriString()
+        // use config option if specified
+        if (floatConf.nfs)
+            return floatConf.nfs
+
+        // otherwise use work directory
+        final workDir = getWorkDir()
+
+        if (workDir.scheme == 's3') {
+            // insert AWS credentials if they are available
+            final accessKey = session.config.navigate('aws.accessKey')
+            final secretKey = session.config.navigate('aws.secretKey')
+            if (accessKey && secretKey)
+                return "[accesskey=${accessKey},secret=${secretKey},mode=rw]${workDir.toUriString()}:${workDir}"
+        }
+
+        return workDir.toUriString()
     }
 
     private String getMemory(TaskRun task) {
@@ -328,10 +342,5 @@ class FloatGridExecutor extends AbstractGridExecutor {
     @Override
     boolean isContainerNative() {
         return true
-    }
-
-    @Override
-    boolean isFusionEnabled() {
-        return FusionHelper.isFusionEnabled(session)
     }
 }
