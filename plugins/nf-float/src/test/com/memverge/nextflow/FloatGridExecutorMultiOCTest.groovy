@@ -15,65 +15,37 @@
  */
 package com.memverge.nextflow
 
-import nextflow.Session
-import nextflow.processor.TaskConfig
-import nextflow.processor.TaskId
-import nextflow.processor.TaskRun
-import spock.lang.Specification
 
 import java.nio.file.Paths
 
-class FloatGridExecutorMultiOCTest extends Specification {
+class FloatGridExecutorMultiOCTest extends FloatBaseTest {
     def addr = 'fa, fb,'
-    def user = 'admin'
-    def pass = 'password'
-    def nfs = 'nfs://a.b.c'
-    def cpu = 5
-    def mem = 10
-    def taskID = 55
-    def image = 'cactus'
-    def script = '/path/job.sh'
-    def tJob = 'tJob'
 
+    @Override
     def newTestExecutor(Map config = null) {
         if (config == null) {
             config = [float: [address : addr,
                               username: user,
-                              password: pass]]
+                              password: pass,
+                              nfs     : nfs]]
         }
-        def exec = [:] as FloatGridExecutor
-        def sess = [:] as Session
-        sess.config = config
-        exec.session = sess
-        exec.floatJobs.setTaskPrefix(tJob)
-        return exec
+        return super.newTestExecutor(config)
     }
 
     def "submit job with round robin"() {
         given:
         def exec = newTestExecutor()
-        def dataVol = nfs + ':/data'
-        def task = [:] as TaskRun
-        def config = [nfs  : dataVol,
-                      cpu  : cpu,
-                      mem  : mem,
-                      image: image] as TaskConfig
+        def task = newTask(exec)
 
         when:
-        task.id = new TaskId(taskID)
-        task.config = config
         def cmd1 = exec.getSubmitCommandLine(task, Paths.get(script))
         def cmd2 = exec.getSubmitCommandLine(task, Paths.get(script))
+        def expected1 = submitCmd(addr: "fb")
+        def expected2 = submitCmd(addr: "fa")
 
         then:
-        cmd1.join(' ') == "float -a fb -u admin -p password sbatch " +
-                "--dataVolume ${dataVol} --image ${image} " +
-                "--cpu ${cpu} --mem ${mem} --job ${script}" +
-                " --customTag nf-job-id:tJob-${taskID}"
-        cmd2.join(' ') == "float -a fa -u admin -p password sbatch " +
-                "--dataVolume ${dataVol} --image ${image} " +
-                "--cpu ${cpu} --mem ${mem} --job ${script}" +
-                " --customTag nf-job-id:tJob-${taskID}"
+        cmd1.join(' ') == expected1.join(' ')
+        cmd2.join(' ') == expected2.join(' ')
     }
 
     def "get queue status commands"() {
@@ -94,32 +66,17 @@ class FloatGridExecutorMultiOCTest extends Specification {
 
     def "input multiple addresses as list"() {
         given:
-        def exec = newTestExecutor(
-                [float: [address : ['fa', 'fb'],
-                         username: user,
-                         password: pass]])
-
-        def dataVol = nfs + ':/data'
-        def task = [:] as TaskRun
-        def config = [nfs  : dataVol,
-                      cpu  : cpu,
-                      mem  : mem,
-                      image: image] as TaskConfig
+        def exec = newTestExecutor()
+        def task = newTask(exec)
 
         when:
-        task.id = new TaskId(taskID)
-        task.config = config
         def cmd1 = exec.getSubmitCommandLine(task, Paths.get(script))
         def cmd2 = exec.getSubmitCommandLine(task, Paths.get(script))
+        def expected1 = submitCmd(addr: "fb")
+        def expected2 = submitCmd(addr: "fa")
 
         then:
-        cmd1.join(' ') == "float -a fb -u admin -p password sbatch " +
-                "--dataVolume ${dataVol} --image ${image} " +
-                "--cpu ${cpu} --mem ${mem} --job ${script}" +
-                " --customTag nf-job-id:tJob-${taskID}"
-        cmd2.join(' ') == "float -a fa -u admin -p password sbatch " +
-                "--dataVolume ${dataVol} --image ${image} " +
-                "--cpu ${cpu} --mem ${mem} --job ${script}" +
-                " --customTag nf-job-id:tJob-${taskID}"
+        cmd1.join(' ') == expected1.join(' ')
+        cmd2.join(' ') == expected2.join(' ')
     }
 }
