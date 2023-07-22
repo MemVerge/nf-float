@@ -16,9 +16,8 @@
 package com.memverge.nextflow
 
 import nextflow.exception.AbortOperationException
-import spock.lang.Specification
 
-class FloatConfTest extends Specification {
+class FloatConfTest extends BaseTest {
     def "one op-center in the address"() {
         given:
         def conf = [
@@ -89,119 +88,7 @@ class FloatConfTest extends Specification {
                 "-u admin -p password"
     }
 
-    def "get memory from mem" () {
-        given:
-        def conf = [
-                float: [mem: 5]]
-
-        when:
-        def fConf = FloatConf.getConf(conf)
-
-        then:
-        fConf.memGB.toGiga() == 5
-    }
-
-    def "get memory from memory" () {
-        given:
-        def conf = [
-                float: [memory: '3 GB']]
-
-        when:
-        def fConf = FloatConf.getConf(conf)
-
-        then:
-        fConf.memGB.toGiga() == 3
-    }
-
-    def "get default memory" () {
-        given:
-        def conf = [
-                float: []]
-
-        when:
-        def fConf = FloatConf.getConf(conf)
-
-        then:
-        fConf.memGB.toGiga() == 4
-    }
-
-    def "get cpu from cpu" () {
-        given:
-        def conf = [
-                float: [cpu: 5]]
-
-        when:
-        def fConf = FloatConf.getConf(conf)
-
-        then:
-        fConf.cpu == '5'
-    }
-
-    def "get cpu from cpus" () {
-        given:
-        def conf = [
-                float: [cpus: 7]]
-
-        when:
-        def fConf = FloatConf.getConf(conf)
-
-        then:
-        fConf.cpu == '7'
-    }
-
-    def "get default cpu" () {
-        given:
-        def conf = [
-                float: []]
-
-        when:
-        def fConf = FloatConf.getConf(conf)
-
-        then:
-        fConf.cpu == '2'
-    }
-
-    def "get image from image" () {
-        given:
-        def conf = [
-                float: [image: 'a']]
-
-        when:
-        def fConf = FloatConf.getConf(conf)
-
-        then:
-        fConf.image == 'a'
-    }
-
-    def "get image from container" () {
-        given:
-        def conf = [
-                float: [container: 'b']]
-
-        when:
-        def fConf = FloatConf.getConf(conf)
-
-        then:
-        fConf.image == 'b'
-    }
-
-    def "get config from process" () {
-        given:
-        def conf = [
-                process: [cpus: 4,
-                          memory: '5 GB',
-                          container: 'busybox']]
-
-        when:
-        def fConf = FloatConf.getConf(conf)
-
-        then:
-        fConf.cpu == '4'
-        fConf.memGB.toGiga() == 5
-        fConf.image == 'busybox'
-    }
-
-    def "credentials are required" () {
+    def "credentials are required"() {
         given:
         def conf = [
                 float: [address: '1.2.3.4']]
@@ -212,5 +99,91 @@ class FloatConfTest extends Specification {
 
         then:
         thrown AbortOperationException
+    }
+
+    def "get s3 data volume"() {
+        given:
+        def conf = [
+                aws: [accessKey: 'ak0',
+                      secretKey: 'sk0']]
+
+        when:
+        def fConf = FloatConf.getConf(conf)
+        def workDir = new URI('s3://bucket/work/dir')
+        def volume = fConf.getDataVolume(workDir)
+
+        then:
+        volume == '[mode=rw,accesskey=ak0,secret=sk0]' +
+                's3://bucket/work/dir:/bucket/work/dir'
+    }
+
+    def "get s3 data volume without host"() {
+        given:
+        setEnv('AWS_ACCESS_KEY_ID', 'aak_id')
+        setEnv('AWS_SECRET_ACCESS_KEY', 'asa_key')
+
+        when:
+        def fConf = FloatConf.getConf()
+        def workDir = new URI('s3:///bucket/work/dir')
+        def volume = fConf.getDataVolume(workDir)
+
+        then:
+        volume == '[mode=rw,accesskey=aak_id,secret=asa_key]' +
+                's3://bucket/work/dir:/bucket/work/dir'
+
+        cleanup:
+        setEnv('AWS_ACCESS_KEY_ID', '')
+        setEnv('AWS_SECRET_ACCESS_KEY', '')
+    }
+
+    def "get s3 credentials from env" () {
+        given:
+        setEnv('AWS_ACCESS_KEY', 'aak')
+        setEnv('AWS_SECRET_KEY', 'ask')
+
+        when:
+        def fConf = FloatConf.getConf()
+        def workDir = new URI('s3://bucket/work/dir')
+        def volume = fConf.getDataVolume(workDir)
+
+        then:
+        volume == '[mode=rw,accesskey=aak,secret=ask]' +
+                's3://bucket/work/dir:/bucket/work/dir'
+
+        cleanup:
+        setEnv('AWS_ACCESS_KEY', '')
+        setEnv('AWS_SECRET_KEY', '')
+    }
+
+    def "get local path with nfs"() {
+        given:
+        def conf = [float: [nfs: 'nfs://1.2.3.4/work/dir']]
+
+        when:
+        def fConf = FloatConf.getConf(conf)
+        def workDir1 = new URI('file:///my/work/dir')
+        def volume1 = fConf.getDataVolume(workDir1)
+
+        def workDir2 = new URI('/my/work/dir')
+        def volume2 = fConf.getDataVolume(workDir2)
+
+        final expected = 'nfs://1.2.3.4/work/dir:/my/work/dir'
+
+        then:
+        volume1 == expected
+        volume2 == expected
+    }
+
+    def "get local path with nfs with mount point"() {
+        given:
+        def fConf = FloatConf.getConf(
+                [float: [nfs: 'nfs://1.2.3.4/work/dir:/local']])
+
+        when:
+        def workDir = new URI('file:///local/here')
+        def volume = fConf.getDataVolume(workDir)
+
+        then:
+        volume == 'nfs://1.2.3.4/work/dir:/local'
     }
 }

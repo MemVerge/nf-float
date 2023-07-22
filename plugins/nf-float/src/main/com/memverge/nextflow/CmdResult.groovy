@@ -17,7 +17,6 @@ package com.memverge.nextflow
 
 import groovy.json.JsonSlurper
 import groovy.util.logging.Slf4j
-import nextflow.executor.AbstractGridExecutor
 
 import java.util.regex.Matcher
 
@@ -27,7 +26,6 @@ import java.util.regex.Matcher
 @Slf4j
 class CmdResult {
     String out
-    String err
     int rc
 
     static CmdResult with(String stdout) {
@@ -51,10 +49,6 @@ class CmdResult {
     String jobID() {
         def matcher = out =~ /(?ms)id: ([0-9a-zA-Z]+).*/
         return getMatch(matcher)
-    }
-
-    def succeeded() {
-        return rc == 0
     }
 
     static String getMatch(Matcher matcher) {

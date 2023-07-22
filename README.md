@@ -53,7 +53,7 @@ Just make sure you have proper internet access.
 
 ```groovy
 plugins {
-    id 'nf-float@0.1.8'
+    id 'nf-float@0.2.0'
 }
 ```
 
@@ -66,9 +66,9 @@ Go to the folder where you just install the `nextflow` command line.
 Let's call this folder the Nextflow home directory.
 Create the float plugin folder with:
 ```bash
-mkdir -p .nextflow/plugins/nf-float-0.1.8
+mkdir -p .nextflow/plugins/nf-float-0.2.0
 ```
-where `0.1.8` is the version of the float plugin.  This version number should 
+where `0.2.0` is the version of the float plugin.  This version number should 
 align with the version in of your plugin and the property in your configuration
 file. (check the configuration section)
 
@@ -76,7 +76,7 @@ Retrieve your plugin zip file and unzip it in this folder.
 If everything goes right, you should be able to see two sub-folders:
 
 ```bash
-$ ll .nextflow/plugins/nf-float-0.1.8/
+$ ll .nextflow/plugins/nf-float-0.2.0/
 total 48
 drwxr-xr-x 4 ec2-user ec2-user    51 Jan  5 07:17 classes
 drwxr-xr-x 2 ec2-user ec2-user    25 Jan  5 07:17 META-INF
@@ -89,7 +89,7 @@ file with the command line option `-c`.  Here is a sample of the configuration.
 
 ```groovy
 plugins {
-    id 'nf-float@0.1.8'
+    id 'nf-float@0.2.0'
 }
 
 workDir = '/mnt/memverge/shared'
@@ -99,6 +99,10 @@ float {
     username = 'admin'
     password = 'memverge'
     nfs = 'nfs://1.2.3.4/mnt/memverge/shared'
+}
+
+process {
+    executor = 'float'
 }
 ```
 
@@ -111,6 +115,8 @@ float {
   * `nfs` points to the location of the NFS.
   * `commonExtra` allows the user to specify other submit parameters.  This parameter
     will be appended to every float submit command.
+* In the `process` scope, we assign `float` to `executor` to tell Nextflow to run
+  the task with the float executor.
 
 ### Configure with environment variables
 
@@ -146,6 +152,48 @@ If the secret is not available, Nextflow reports error like this:
 ```
 Unknown config secret 'MMC_USERNAME'
 ```
+
+### Configure s3 work directory
+
+To enable s3 as work directory, user need to set work directory to a s3 bucket.
+```groovy
+plugins {
+    id 'nf-float@0.2.0'
+}
+
+workDir = 's3://bucket/path'
+
+process.executor = 'float'
+
+podman.registry = 'quay.io'
+
+float {
+    address = 'op.center.address'
+    username = secrets.MMC_USERNAME
+    password = secrets.MMC_PASSWORD
+}
+
+aws {
+  accessKey = '***'
+  secretKey = '***'
+  region = 'us-east-2'
+}
+```
+
+You don't need to specify `nfs` in `float` scope.  The plugin will assemble
+the `nfs` option automatically.
+
+The plugin retrieves the s3 credentials from Nextflow.
+Nextflow looks for AWS credentials in the following order:
+* the `nextflow.config` file in the pipeline execution directory
+* the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
+* the environment variables `AWS_ACCESS_KEY` and `AWS_SECRET_KEY`
+* the default profile in the AWS credentials file located at `~/.aws/credentials`
+* the default profile in the AWS client configuration file located at `~/.aws/config`
+* the temporary AWS credentials provided by an IAM instance role. See IAM Roles documentation for details.
+
+For detail, check NextFlow's document.
+https://www.nextflow.io/docs/latest/amazons3.html#security-credentials
 
 ## Task Sample
 

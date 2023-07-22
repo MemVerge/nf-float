@@ -16,10 +16,9 @@
 package com.memverge.nextflow
 
 import groovy.transform.CompileStatic
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
+import nextflow.Global
 import nextflow.exception.AbortOperationException
-import nextflow.util.MemoryUnit
 import org.apache.commons.lang.StringUtils
 
 /**
@@ -28,11 +27,11 @@ import org.apache.commons.lang.StringUtils
 @Slf4j
 @CompileStatic
 class FloatConf {
-    static String MMC_ADDRESS = "MMC_ADDRESS"
-    static String MMC_USERNAME = "MMC_USERNAME"
-    static String MMC_PASSWORD = "MMC_PASSWORD"
-    static String ADDR_SEP = ","
-    static String NF_JOB_ID = "nf-job-id"
+    static final String MMC_ADDRESS = "MMC_ADDRESS"
+    static final String MMC_USERNAME = "MMC_USERNAME"
+    static final String MMC_PASSWORD = "MMC_PASSWORD"
+    static final String ADDR_SEP = ","
+    static final String NF_JOB_ID = "nf-job-id"
 
     /** credentials for op center */
     String username
@@ -40,11 +39,11 @@ class FloatConf {
     Collection<String> addresses
     String nfs
 
+    String s3accessKey
+    String s3secretKey
+
     /** parameters for submitting the tasks */
     String commonExtra
-
-    /** some extra default parameters */
-    int cmdTimeoutSeconds = 30
 
     /**
      * Create a FloatConf instance and initialize the content from the
@@ -53,41 +52,88 @@ class FloatConf {
      * @param config
      * @return
      */
-    static FloatConf getConf(Map config) {
+    static FloatConf getConf(Map config = null) {
+        if (config == null) {
+            config = [:]
+        }
         FloatConf ret = new FloatConf()
 
-        if (!config || config.float !instanceof Map)
-            return ret
+        ret.initFloatConf(config.float as Map)
+        ret.initAwsConf(config)
 
-        Map node = config.float as Map
-        ret.username = node.username ?: System.getenv(MMC_USERNAME)
-        ret.password = node.password ?: System.getenv(MMC_PASSWORD)
-        if (node.address instanceof Collection) {
-            ret.addresses = node.address.collect { it.toString() }
+        return ret
+    }
+
+    String getDataVolume(URI workDir) {
+        final scheme = workDir.getScheme()
+        if (scheme == "s3") {
+            def options = ["mode=rw"]
+            if (s3accessKey && s3secretKey) {
+                options.add("accesskey=" + s3accessKey)
+                options.add("secret=" + s3secretKey)
+            }
+            final optionsStr = options.join(",")
+            final path = workDir.host ?
+                    "/${workDir.host}${workDir.path}" :
+                    workDir.path
+            return "[$optionsStr]s3:/$path:$path"
+        }
+        // local directory, need nfs support
+        if (!nfs) {
+            log.warn "local work directory need nfs support"
+            return ""
+        }
+        if (nfs.split(":").size() > 2) {
+            // already have mount point
+            return nfs
+        }
+        return "$nfs:${workDir.path}"
+    }
+
+    private def initFloatConf(Map floatNode) {
+        if (!floatNode) {
+            return
+        }
+        this.username = floatNode.username ?: System.getenv(MMC_USERNAME)
+        this.password = floatNode.password ?: System.getenv(MMC_PASSWORD)
+        if (floatNode.address instanceof Collection) {
+            this.addresses = floatNode.address.collect { it.toString() }
         } else {
-            String address = node.address ?: System.getenv(MMC_ADDRESS) ?: ""
-            ret.addresses = address
+            String address = floatNode.address ?: System.getenv(MMC_ADDRESS) ?: ""
+            this.addresses = address
                     .tokenize(ADDR_SEP)
                     .collect { it.trim() }
                     .findAll { it.size() > 0 }
         }
-        ret.nfs = node.nfs
-        ret.commonExtra = node.commonExtra
+        this.nfs = floatNode.nfs
+        this.commonExtra = floatNode.commonExtra
 
-        if (node.cpu)
-            log.warn "Config option `float.cpu` is no longer supported, use `process.cpus` instead"
-        if (node.cpus)
-            log.warn "Config option `float.cpus` is no longer supported, use `process.cpus` instead"
-        if (node.mem)
-            log.warn "Config option `float.mem` is no longer supported, use `process.memory` instead"
-        if (node.memory)
-            log.warn "Config option `float.memory` is no longer supported, use `process.memory` instead"
-        if (node.image)
-            log.warn "Config option `float.image` is no longer supported, use `process.container` instead"
-        if (node.container)
-            log.warn "Config option `float.container` is no longer supported, use `process.container` instead"
+        if (floatNode.cpu)
+            warnDeprecated("float.cpu", "process.cpus")
+        if (floatNode.cpus)
+            warnDeprecated("float.cpus", "process.cpus")
+        if (floatNode.mem)
+            warnDeprecated("float.mem", "process.memory")
+        if (floatNode.memory)
+            warnDeprecated("float.memory", "process.memory")
+        if (floatNode.image)
+            warnDeprecated("float.image", "process.container")
+        if (floatNode.container)
+            warnDeprecated("float.container", "process.container")
+    }
 
-        return ret
+    private static def warnDeprecated(String deprecated, String replacement) {
+        log.warn "[flaot] config option `$deprecated` " +
+                "is no longer supported, " +
+                "use `$replacement` instead"
+    }
+
+    private def initAwsConf(Map conf) {
+        def cred = Global.getAwsCredentials(System.getenv(), conf)
+        if (cred && cred.size() > 1) {
+            s3accessKey = cred[0]
+            s3secretKey = cred[1]
+        }
     }
 
     void validate() {
@@ -122,6 +168,4 @@ class FloatConf {
     String getCli(String address = "") {
         return getCliPrefix(address).join(" ")
     }
-
-    def cmdTimeoutMS() { cmdTimeoutSeconds * 1000 }
 }

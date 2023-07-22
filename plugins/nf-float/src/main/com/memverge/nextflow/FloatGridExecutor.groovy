@@ -16,17 +16,17 @@
 package com.memverge.nextflow
 
 import groovy.transform.CompileStatic
+import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
-import nextflow.exception.ProcessUnrecoverableException
 import nextflow.executor.AbstractGridExecutor
-import nextflow.extension.FilesEx
+import nextflow.file.FileHelper
 import nextflow.fusion.FusionHelper
 import nextflow.processor.TaskRun
 import nextflow.util.Escape
 import nextflow.util.ServiceName
-import org.apache.commons.lang.StringUtils
 
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 
@@ -37,11 +37,14 @@ import java.util.stream.Collectors
 @ServiceName('float')
 @CompileStatic
 class FloatGridExecutor extends AbstractGridExecutor {
+    static final int DFT_MEM_GB = 1
+    static final String DFT_IMAGE = "quay.io/fedora/fedora-minimal"
+
     private FloatJobs _floatJobs
 
     private AtomicInteger serial = new AtomicInteger()
 
-    private String binDir
+    private Path binDir
 
     private FloatConf getFloatConf() {
         return FloatConf.getConf(session.config)
@@ -72,8 +75,8 @@ class FloatGridExecutor extends AbstractGridExecutor {
         log.info "[float] switch task ${task.id} to ${task.workDirStr}"
         floatJobs.setWorkDir(task.id, task.workDirStr)
 
-        def result = ""
-        result += "NXF_CHDIR=${Escape.path(task.workDir)}\n"
+        final path = Escape.path(task.workDir)
+        def result = "NXF_CHDIR=${path}\n"
 
         if (needBinDir()) {
             // add path to the script
@@ -84,38 +87,48 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     @Override
-    protected String getHeaderToken() { null }
+    protected String getHeaderToken() {
+        null
+    }
 
     @Override
-    protected List<String> getDirectives(TaskRun task, List<String> initial) { null }
+    protected List<String> getDirectives(TaskRun task, List<String> initial) {
+        null
+    }
 
     private boolean needBinDir() {
-        return session.binDir && !session.binDir.empty() && !session.disableRemoteBinDir
+        return session.binDir &&
+                !session.binDir.empty() &&
+                !session.disableRemoteBinDir
     }
 
     private void uploadBinDir() {
-        // upload local binaries
         if (needBinDir()) {
             binDir = getTempDir()
-            log.info "Uploading local `bin` ${session.binDir} to ${binDir}/bin"
-            FilesEx.copyTo(session.binDir, binDir)
+            log.info "Uploading local `bin` ${session.binDir} " +
+                    "to ${binDir}/bin"
+            FileHelper.copyPath(
+                    session.binDir,
+                    binDir.resolve("bin"),
+                    StandardCopyOption.REPLACE_EXISTING)
         }
     }
 
-    private String getDataVolume(TaskRun task) {
-        return floatConf.nfs ?: getWorkDir().toUriString()
-    }
-
-    private String getMemory(TaskRun task) {
+    private static String getMemory(TaskRun task) {
         final mem = task.config.getMemory()
-        return mem ? mem.toGiga().toString() : '4'
+        final giga = mem?.toGiga()
+        if (!giga) {
+            log.warn "memory $mem is too small.  " +
+                    "will use default $DFT_MEM_GB"
+        }
+        return giga ? giga.toString() : DFT_MEM_GB
     }
 
     private Collection<String> getExtra(TaskRun task) {
-        def extraNode = task.config.extra
+        final extraNode = task.config.extra
         def extra = extraNode ? extraNode as String : ''
-        def common = floatConf.commonExtra
-        if (StringUtils.length(common)) {
+        final common = floatConf.commonExtra
+        if (common) {
             extra = common.trim() + " " + extra.trim()
         }
         def ret = extra.split('\\s+')
@@ -123,7 +136,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     private List<String> getCmdPrefixForJob(String jobID) {
-        def oc = floatJobs.getOc(jobID)
+        final oc = floatJobs.getOc(jobID)
         return floatConf.getCliPrefix(oc)
     }
 
@@ -134,45 +147,118 @@ class FloatGridExecutor extends AbstractGridExecutor {
      * @return
      */
     private List<String> getSubmitCmdPrefix() {
-        def i = serial.incrementAndGet()
-        def addresses = floatConf.addresses
-        def address = addresses[i % (addresses.size())]
+        final i = serial.incrementAndGet()
+        final addresses = floatConf.addresses
+        final address = addresses[i % (addresses.size())]
         return floatConf.getCliPrefix(address)
     }
 
-    private String toCmdString(List<String> floatCmd) {
+    String toCmdString(List<String> floatCmd) {
         def ret = floatCmd.join(" ")
-        return ret.replace("-p ${floatConf.password}", "-p ***")
+        final toReplace = [
+                ("-p " + floatConf.password): "-p ***",
+                (floatConf.s3accessKey)     : "***",
+                (floatConf.s3secretKey)     : "***",
+        ]
+        for (def entry : toReplace.entrySet()) {
+            if (!entry.key) {
+                continue
+            }
+            ret = ret.replace(entry.key, entry.value)
+        }
+        return ret
+    }
+
+    private static def warnDeprecated(String deprecated, String replacement) {
+        log.warn "[flaot] process `$deprecated` " +
+                "is no longer supported, " +
+                "use $replacement instead"
+    }
+
+    private static def validate(TaskRun task) {
+        if (task.config.nfs) {
+            warnDeprecated('nfs', '`float.nfs` config option')
+        }
+        if (task.config.cpu) {
+            warnDeprecated('cpu', '`cpus` directive')
+        }
+        if (task.config.mem) {
+            warnDeprecated('mem', '`memory` directive')
+        }
+        if (task.config.image) {
+            warnDeprecated('image', '`container` directive')
+        }
+    }
+
+    String getContainer(TaskRun task) {
+        def image = task.getContainer()
+        if (!image) {
+            image = DFT_IMAGE
+            log.warn "container image not specified for" +
+                    "${task.id}, use default image: $DFT_IMAGE"
+        }
+        def registry = getDftRegistry()
+        if (image.startsWith(registry)) {
+            return image
+        }
+        if (!image.split('/')[0].contains('.')) {
+            return "$registry/$image"
+        }
+        return image
+    }
+
+    @Memoized
+    private String getDftRegistry() {
+        def engines = ['podman', 'docker']
+        for (String engine : engines) {
+            def config = session.config?.get(engine) as Map
+            if (config) {
+                def registry = config.registry
+                if (registry) {
+                    return registry
+                }
+            }
+        }
+        return ''
     }
 
     @Override
     List<String> getSubmitCommandLine(TaskRun task, Path scriptFile) {
-        if (task.config.nfs)
-            log.warn '[float] process `nfs` is no longer supported, use `float.nfs` config option instead'
-        if (task.config.cpu)
-            log.warn '[float] process `cpu` is no longer supported, use `cpus` directive instead'
-        if (task.config.mem)
-            log.warn '[float] process `mem` is no longer supported, use `memory` directive instead'
-        if (task.config.image)
-            log.warn '[float] process `image` is no longer supported, use `container` directive instead'
-
-        final container = task.getContainer()
-        if (!container)
-            throw new ProcessUnrecoverableException("Process `${task.lazyName()}` failed because the container image was not specified")
+        validate(task)
 
         String tag = "${FloatConf.NF_JOB_ID}:${floatJobs.getJobName(task.id)}"
+        def volume = floatConf.getDataVolume(workDir.toUri())
 
         def cmd = getSubmitCmdPrefix()
         cmd << 'sbatch'
-        cmd << '--dataVolume' << getDataVolume(task)
-        cmd << '--image' << container
+        if (volume) {
+            cmd << '--dataVolume' << volume
+        }
+        cmd << '--image' << getContainer(task)
         cmd << '--cpu' << task.config.getCpus().toString()
         cmd << '--mem' << getMemory(task)
-        cmd << '--job' << scriptFile.toUriString()
+        cmd << '--job' << getScriptFilePath(scriptFile)
         cmd << '--customTag' << tag
         cmd.addAll(getExtra(task))
         log.info "[float] submit job: ${toCmdString(cmd)}"
         return cmd
+    }
+
+    private String getScriptFilePath(Path scriptFile) {
+        if (workDir.getScheme() == "s3") {
+            return downloadScriptFile(scriptFile)
+        }
+        return scriptFile.toString()
+    }
+
+    protected String downloadScriptFile(Path scriptFile) {
+        final localTmp = File.createTempFile("nextflow", scriptFile.name)
+        log.info("download $scriptFile to $localTmp")
+        FileHelper.copyPath(
+                scriptFile,
+                localTmp.toPath(),
+                StandardCopyOption.REPLACE_EXISTING)
+        return localTmp.getAbsolutePath()
     }
 
     /**
@@ -241,8 +327,8 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     private List<String> getCmdPrefix0() {
-        def addresses = floatConf.addresses
-        def address = addresses.first()
+        final addresses = floatConf.addresses
+        final address = addresses.first()
         return floatConf.getCliPrefix(address)
     }
 
@@ -260,7 +346,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
      */
     @Override
     protected Map<String, QueueStatus> getQueueStatus0(queue) {
-        Map<String, List<String>> cmdMap = queueStatusCommands()
+        final cmdMap = queueStatusCommands()
         floatJobs.updateStatus(cmdMap)
         log.debug "[float] collecting job status completes."
         return queueStatus
@@ -313,6 +399,10 @@ class FloatGridExecutor extends AbstractGridExecutor {
             'Starting'         : QueueStatus.RUNNING,
             'Executing'        : QueueStatus.RUNNING,
             'Floating'         : QueueStatus.RUNNING,
+            'Suspended'        : QueueStatus.RUNNING,
+            'Suspending'       : QueueStatus.RUNNING,
+            'Resuming'         : QueueStatus.RUNNING,
+            'Capturing'        : QueueStatus.RUNNING,
             'Completed'        : QueueStatus.DONE,
             'Cancelled'        : QueueStatus.ERROR,
             'Cancelling'       : QueueStatus.ERROR,
