@@ -16,10 +16,13 @@
 package com.memverge.nextflow
 
 import groovy.util.logging.Slf4j
+import nextflow.file.FileHelper
 import nextflow.processor.TaskId
 import org.apache.commons.lang.RandomStringUtils
 import org.apache.commons.lang.StringUtils
 
+import java.nio.file.NoSuchFileException
+import java.nio.file.Path
 import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 
@@ -30,7 +33,7 @@ class FloatJobs {
 
     private Map<String, String> job2status
     private Map<String, String> job2oc
-    private Map<String, String> task2workDir
+    private Map<String, Path> task2workDir
     private Collection<String> ocs
     private String taskPrefix
 
@@ -42,13 +45,13 @@ class FloatJobs {
         job2oc = new ConcurrentHashMap<>()
         task2workDir = new ConcurrentHashMap<>()
         ocs = ocAddresses
-        def charset = (('a'..'z')+('0'..'9')).join('')
+        def charset = (('a'..'z') + ('0'..'9')).join('')
         taskPrefix = RandomStringUtils.random(
                 6, charset.toCharArray())
     }
 
     def setTaskPrefix(String prefix) {
-       taskPrefix = prefix
+        taskPrefix = prefix
     }
 
     String getJobName(TaskId id) {
@@ -63,7 +66,7 @@ class FloatJobs {
         return job2status
     }
 
-    def setWorkDir(TaskId taskID, String dir) {
+    def setWorkDir(TaskId taskID, Path dir) {
         def name = getJobName(taskID)
         task2workDir[name] = dir
     }
@@ -85,23 +88,25 @@ class FloatJobs {
 
             def currentSt = job2status.get(jobID, Unknown)
             def workDir = task2workDir.get(taskID)
-            if (StringUtils.length(workDir) == 0) {
+            if (!workDir) {
                 return
             }
+            // check the availability of result files
             // call list files to update the folder cache
-            new File(workDir).listFiles()
+            FileHelper.listDirectory(workDir)
             def files = ['.command.out', '.command.err', '.exitcode']
             if (currentSt != Completed && st == Completed) {
                 for (filename in files) {
-                    def name = Paths.get(workDir, filename).toString()
-                    def file = new File(name)
-                    if (!file.exists()) {
-                        log.warn("job $jobID completed " +
-                                "but file not found: $name")
+                    def name = workDir.resolve(filename)
+                    try {
+                        !FileHelper.checkIfExists(name, [checkIfExists: true])
+                    } catch (NoSuchFileException ex) {
+                        log.info("[float] job $jobID completed " +
+                                "but file not found: $ex")
                         return
                     }
                 }
-                log.info("found $files in: $workDir")
+                log.debug("[float] found $files in: $workDir")
             }
             job2status.put(jobID, st)
         }

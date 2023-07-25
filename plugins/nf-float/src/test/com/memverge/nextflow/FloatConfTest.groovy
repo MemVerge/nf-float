@@ -110,14 +110,14 @@ class FloatConfTest extends BaseTest {
         when:
         def fConf = FloatConf.getConf(conf)
         def workDir = new URI('s3://bucket/work/dir')
-        def volume = fConf.getDataVolume(workDir)
+        def volume = fConf.getWorkDirVol(workDir)
 
         then:
         volume == '[mode=rw,accesskey=ak0,secret=sk0]' +
-                's3://bucket/work/dir:/bucket/work/dir'
+                's3://bucket:/bucket'
     }
 
-    def "get s3 data volume without host"() {
+    def "get s3 credentials from env 0"() {
         given:
         setEnv('AWS_ACCESS_KEY_ID', 'aak_id')
         setEnv('AWS_SECRET_ACCESS_KEY', 'asa_key')
@@ -125,18 +125,18 @@ class FloatConfTest extends BaseTest {
         when:
         def fConf = FloatConf.getConf()
         def workDir = new URI('s3:///bucket/work/dir')
-        def volume = fConf.getDataVolume(workDir)
+        def volume = fConf.getWorkDirVol(workDir)
 
         then:
         volume == '[mode=rw,accesskey=aak_id,secret=asa_key]' +
-                's3://bucket/work/dir:/bucket/work/dir'
+                's3://bucket:/bucket'
 
         cleanup:
         setEnv('AWS_ACCESS_KEY_ID', '')
         setEnv('AWS_SECRET_ACCESS_KEY', '')
     }
 
-    def "get s3 credentials from env" () {
+    def "get s3 credentials from env 1" () {
         given:
         setEnv('AWS_ACCESS_KEY', 'aak')
         setEnv('AWS_SECRET_KEY', 'ask')
@@ -144,11 +144,11 @@ class FloatConfTest extends BaseTest {
         when:
         def fConf = FloatConf.getConf()
         def workDir = new URI('s3://bucket/work/dir')
-        def volume = fConf.getDataVolume(workDir)
+        def volume = fConf.getWorkDirVol(workDir)
 
         then:
         volume == '[mode=rw,accesskey=aak,secret=ask]' +
-                's3://bucket/work/dir:/bucket/work/dir'
+                's3://bucket:/bucket'
 
         cleanup:
         setEnv('AWS_ACCESS_KEY', '')
@@ -162,10 +162,10 @@ class FloatConfTest extends BaseTest {
         when:
         def fConf = FloatConf.getConf(conf)
         def workDir1 = new URI('file:///my/work/dir')
-        def volume1 = fConf.getDataVolume(workDir1)
+        def volume1 = fConf.getWorkDirVol(workDir1)
 
         def workDir2 = new URI('/my/work/dir')
-        def volume2 = fConf.getDataVolume(workDir2)
+        def volume2 = fConf.getWorkDirVol(workDir2)
 
         final expected = 'nfs://1.2.3.4/work/dir:/my/work/dir'
 
@@ -181,7 +181,7 @@ class FloatConfTest extends BaseTest {
 
         when:
         def workDir = new URI('file:///local/here')
-        def volume = fConf.getDataVolume(workDir)
+        def volume = fConf.getWorkDirVol(workDir)
 
         then:
         volume == 'nfs://1.2.3.4/work/dir:/local'
