@@ -20,7 +20,6 @@ import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
 import nextflow.executor.AbstractGridExecutor
 import nextflow.file.FileHelper
-import nextflow.fusion.FusionHelper
 import nextflow.processor.TaskRun
 import nextflow.util.Escape
 import nextflow.util.ServiceName
@@ -73,7 +72,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
     protected String getHeaderScript(TaskRun task) {
         log.info "[float] switch task ${task.id} to ${task.workDirStr}"
-        floatJobs.setWorkDir(task.id, task.workDirStr)
+        floatJobs.setWorkDir(task.id, task.workDir)
 
         final path = Escape.path(task.workDir)
         def result = "NXF_CHDIR=${path}\n"
@@ -118,7 +117,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         final mem = task.config.getMemory()
         final giga = mem?.toGiga()
         if (!giga) {
-            log.warn "memory $mem is too small.  " +
+            log.debug "memory $mem is too small.  " +
                     "will use default $DFT_MEM_GB"
         }
         return giga ? giga.toString() : DFT_MEM_GB
@@ -153,7 +152,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return floatConf.getCliPrefix(address)
     }
 
-    String toCmdString(List<String> floatCmd) {
+    String toLogStr(List<String> floatCmd) {
         def ret = floatCmd.join(" ")
         final toReplace = [
                 ("-p " + floatConf.password): "-p ***",
@@ -170,7 +169,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     private static def warnDeprecated(String deprecated, String replacement) {
-        log.warn "[flaot] process `$deprecated` " +
+        log.warn1 "[float] process `$deprecated` " +
                 "is no longer supported, " +
                 "use $replacement instead"
     }
@@ -222,17 +221,28 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return ''
     }
 
+    private List<String> getMountVols(TaskRun task) {
+        List<String> volumes = []
+        volumes << floatConf.getWorkDirVol(workDir.uri)
+
+        for (def src : task.getInputFilesMap().values()) {
+            volumes << floatConf.getInputVolume(src.uri)
+        }
+        def ret = volumes.unique() - ""
+        log.info "[float] volumes to mount for ${task.id}: ${toLogStr(ret)}"
+        return ret
+    }
+
     @Override
     List<String> getSubmitCommandLine(TaskRun task, Path scriptFile) {
         validate(task)
 
-        String tag = "${FloatConf.NF_JOB_ID}:${floatJobs.getJobName(task.id)}"
-        def volume = floatConf.getDataVolume(workDir.toUri())
-
+        final jobName = floatJobs.getJobName(task.id)
+        final String tag = "${FloatConf.NF_JOB_ID}:${jobName}"
         def cmd = getSubmitCmdPrefix()
         cmd << 'sbatch'
-        if (volume) {
-            cmd << '--dataVolume' << volume
+        for (def vol : getMountVols(task)) {
+            cmd << '--dataVolume' << vol
         }
         cmd << '--image' << getContainer(task)
         cmd << '--cpu' << task.config.getCpus().toString()
@@ -240,7 +250,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         cmd << '--job' << getScriptFilePath(scriptFile)
         cmd << '--customTag' << tag
         cmd.addAll(getExtra(task))
-        log.info "[float] submit job: ${toCmdString(cmd)}"
+        log.info "[float] submit job: ${toLogStr(cmd)}"
         return cmd
     }
 
@@ -289,7 +299,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             if (ret != 0) {
                 def m = """\
                 Unable to kill pending jobs
-                - cmd executed: ${toCmdString(cmd)}}
+                - cmd executed: ${toLogStr(cmd)}}
                 - exit status : $ret
                 - output      :
                 """.stripIndent()
@@ -306,7 +316,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
      * @param jobId The job ID to be kill
      * @return The command line to be used to kill the specified job
      */
-    protected List<List<String>> killTaskCommands(def jobId) {
+    List<List<String>> killTaskCommands(def jobId) {
         def jobIds
         if (jobId instanceof Collection) {
             jobIds = jobId
@@ -320,7 +330,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             cmd << 'scancel'
             cmd << '-j'
             cmd << id
-            log.info "[float] cancel job: ${toCmdString(cmd)}"
+            log.info "[float] cancel job: ${toLogStr(cmd)}"
             ret.add(cmd)
         }
         return ret
@@ -337,7 +347,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         def cmd = getCmdPrefix0()
         cmd << 'scancel'
         cmd << '-j'
-        log.info "[float] cancel job: ${toCmdString(cmd)}"
+        log.info "[float] cancel job: ${toLogStr(cmd)}"
         return cmd
     }
 
@@ -375,7 +385,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         cmd << 'squeue'
         cmd << '--format'
         cmd << 'json'
-        log.info "[float] query job status: ${toCmdString(cmd)}"
+        log.info "[float] query job status: ${toLogStr(cmd)}"
         return cmd
     }
 
@@ -418,10 +428,5 @@ class FloatGridExecutor extends AbstractGridExecutor {
     @Override
     boolean isContainerNative() {
         return true
-    }
-
-    @Override
-    boolean isFusionEnabled() {
-        return FusionHelper.isFusionEnabled(session)
     }
 }

@@ -17,8 +17,8 @@ package com.memverge.nextflow
 
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
-import nextflow.Global
 import nextflow.exception.AbortOperationException
+import nextflow.io.BucketParser
 import org.apache.commons.lang.StringUtils
 
 /**
@@ -30,6 +30,7 @@ class FloatConf {
     static final String MMC_ADDRESS = "MMC_ADDRESS"
     static final String MMC_USERNAME = "MMC_USERNAME"
     static final String MMC_PASSWORD = "MMC_PASSWORD"
+    static final String S3_SCHEMA = "s3"
     static final String ADDR_SEP = ","
     static final String NF_JOB_ID = "nf-job-id"
 
@@ -64,19 +65,30 @@ class FloatConf {
         return ret
     }
 
-    String getDataVolume(URI workDir) {
-        final scheme = workDir.getScheme()
-        if (scheme == "s3") {
+    private static boolean isS3(URI input) {
+        return input.getScheme() == S3_SCHEMA
+    }
+
+    String getInputVolume(URI input) {
+        if (isS3(input)) {
             def options = ["mode=rw"]
             if (s3accessKey && s3secretKey) {
                 options.add("accesskey=" + s3accessKey)
                 options.add("secret=" + s3secretKey)
             }
             final optionsStr = options.join(",")
-            final path = workDir.host ?
-                    "/${workDir.host}${workDir.path}" :
-                    workDir.path
-            return "[$optionsStr]s3:/$path:$path"
+
+            // the s3 URI may contains 3 slashes, replace it with 2
+            def string = input.toString().replaceAll("///", "//")
+            final bucket = BucketParser.from(string).bucket
+            return "[$optionsStr]$S3_SCHEMA://$bucket:/$bucket"
+        }
+        return ""
+    }
+
+    String getWorkDirVol(URI workDir) {
+        if (isS3(workDir)) {
+            return getInputVolume(workDir)
         }
         // local directory, need nfs support
         if (!nfs) {

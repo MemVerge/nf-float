@@ -63,6 +63,24 @@ class FloatGridExecutorTest extends FloatBaseTest {
                           'scancel', '-j', jobID].join(' ')
     }
 
+    def "kill commands"() {
+        given:
+        final exec = newTestExecutor()
+
+        when:
+        final commands = exec.killTaskCommands(['a', 'b'])
+        def expected =  { jobID ->
+            return ['float', '-a', addr,
+                    '-u', user,
+                    '-p', pass,
+                    'scancel', '-j', jobID].join(' ')
+        }
+
+        then:
+        commands[0].join(' ') == expected('a')
+        commands[1].join(' ') == expected('b')
+    }
+
     def "submit command line"() {
         given:
         final dataVolume = nfs + ':/data'
@@ -325,7 +343,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
 
 
         def dir = Paths.get('src', 'test', 'com', 'memverge')
-        exec.floatJobs.setWorkDir(new TaskId(8), dir.toString())
+        exec.floatJobs.setWorkDir(new TaskId(8), dir)
         def res = exec.parseQueueStatus(text)
 
         then:
@@ -455,7 +473,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                 'key2=' + accessKey]
 
         when:
-        def str = exec.toCmdString(cmd)
+        def str = exec.toLogStr(cmd)
 
         then:
         str == "-p *** key1=*** key2=***"

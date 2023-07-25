@@ -15,6 +15,7 @@
  */
 package com.memverge.nextflow
 
+import java.nio.file.FileSystems
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.executor.GridTaskHandler
@@ -41,9 +42,15 @@ class FloatTaskHandler extends GridTaskHandler {
         log.trace "start process ${task.name} > cli: ${cli}"
 
         // -- prepare submit process
-        return new ProcessBuilder()
+        final builder = new ProcessBuilder()
             .command( cli as String[] )
             .redirectErrorStream(true)
+
+        if( task.workDir.fileSystem == FileSystems.default ) {
+            builder.directory(task.workDir.toFile())
+        }
+
+        return builder
     }
 
 }
