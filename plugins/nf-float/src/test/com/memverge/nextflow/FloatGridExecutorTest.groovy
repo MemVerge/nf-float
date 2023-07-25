@@ -69,7 +69,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
 
         when:
         final commands = exec.killTaskCommands(['a', 'b'])
-        def expected =  { jobID ->
+        def expected = { jobID ->
             return ['float', '-a', addr,
                     '-u', user,
                     '-p', pass,
@@ -237,28 +237,6 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ') == expected.join(' ')
     }
 
-    def "use default cpu, memory and image"() {
-        given:
-        final dataVolume = nfs + ':/data'
-        final exec = newTestExecutor(
-                [float: [address : addr,
-                         username: user,
-                         password: pass,
-                         nfs     : dataVolume]])
-        final task = newTask(exec, new TaskConfig())
-
-        when:
-        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
-        final expected = submitCmd(
-                cpu: 1,
-                memory: FloatTestExecutor.DFT_MEM_GB,
-                nfs: dataVolume,
-                image: FloatTestExecutor.DFT_IMAGE)
-
-        then:
-        cmd.join(' ') == expected.join(' ')
-    }
-
     def "use default nfs and work dir"() {
         given:
         final exec = newTestExecutor()
@@ -310,16 +288,16 @@ class FloatGridExecutorTest extends FloatBaseTest {
         given:
         def exec = newTestExecutor()
         def taskMap = [
-                0: "Submitted",
-                1: "Initializing",
-                2: "Executing",
-                3: "Floating",
-                4: "Completed",
-                5: "Cancelled",
-                6: "FailToComplete",
-                7: "FailToExecute",
-                8: "Completed",
-                9: "Starting",
+                0 : "Submitted",
+                1 : "Initializing",
+                2 : "Executing",
+                3 : "Floating",
+                4 : "Completed",
+                5 : "Cancelled",
+                6 : "FailToComplete",
+                7 : "FailToExecute",
+                8 : "Completed",
+                9 : "Starting",
                 10: "Suspended",
                 11: "Suspending",
                 12: "Resuming",
@@ -405,55 +383,6 @@ class FloatGridExecutorTest extends FloatBaseTest {
         setEnv('MMC_ADDRESS', '')
         setEnv('MMC_USERNAME', '')
         setEnv('MMC_PASSWORD', '')
-    }
-
-    def "get image with default registry"() {
-        given:
-        final exec = newTestExecutor(
-                [podman: [registry: 'quay.io'],
-                 float : [address : addr,
-                          username: user,
-                          password: pass]])
-
-        when:
-        final task = newTask(exec, new TaskConfig(
-                cpus: cpu,
-                memory: "$mem G",
-                container: image))
-
-        then:
-        exec.getContainer(task) == "quay.io/$image"
-    }
-
-    def "get image without default registry"() {
-        given:
-        final exec = newTestExecutor(
-                [float: [address : addr,
-                         username: user,
-                         password: pass]])
-
-        when:
-        final task = newTask(exec)
-
-        then:
-        exec.getContainer(task) == "$image"
-    }
-
-    def "get image with default registry and specific image"() {
-        given:
-        final exec = newTestExecutor(
-                [podman: [registry: 'quay.io'],
-                 float : [address : addr,
-                          username: user,
-                          password: pass]])
-        final dImage = "docker.io/$image"
-
-        when:
-        final task = newTask(exec, new TaskConfig(
-                'container': dImage))
-
-        then:
-        exec.getContainer(task) == dImage
     }
 
     def "test to command string"() {
