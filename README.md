@@ -163,7 +163,10 @@ plugins {
 
 workDir = 's3://bucket/path'
 
-process.executor = 'float'
+process {
+    executor = 'float'
+    container = 'fedora/fedora-minimal'
+}
 
 podman.registry = 'quay.io'
 
@@ -225,7 +228,7 @@ workflow {
 * `memory` specifies the memory.
 * `container` - specifies the container image.
 * `extra` - specifies extra parameters for the job.  It will be merged with
-            the `commonExtra` parameter. 
+            the `commonExtra` parameter.
 
 ## Run the Workflow
 

@@ -16,8 +16,8 @@
 package com.memverge.nextflow
 
 import groovy.transform.CompileStatic
-import groovy.transform.Memoized
 import groovy.util.logging.Slf4j
+import nextflow.exception.AbortOperationException
 import nextflow.executor.AbstractGridExecutor
 import nextflow.file.FileHelper
 import nextflow.processor.TaskRun
@@ -37,7 +37,6 @@ import java.util.stream.Collectors
 @CompileStatic
 class FloatGridExecutor extends AbstractGridExecutor {
     static final int DFT_MEM_GB = 1
-    static final String DFT_IMAGE = "quay.io/fedora/fedora-minimal"
 
     private FloatJobs _floatJobs
 
@@ -189,38 +188,6 @@ class FloatGridExecutor extends AbstractGridExecutor {
         }
     }
 
-    String getContainer(TaskRun task) {
-        def image = task.getContainer()
-        if (!image) {
-            image = DFT_IMAGE
-            log.warn "container image not specified for" +
-                    "${task.id}, use default image: $DFT_IMAGE"
-        }
-        def registry = getDftRegistry()
-        if (image.startsWith(registry)) {
-            return image
-        }
-        if (!image.split('/')[0].contains('.')) {
-            return "$registry/$image"
-        }
-        return image
-    }
-
-    @Memoized
-    private String getDftRegistry() {
-        def engines = ['podman', 'docker']
-        for (String engine : engines) {
-            def config = session.config?.get(engine) as Map
-            if (config) {
-                def registry = config.registry
-                if (registry) {
-                    return registry
-                }
-            }
-        }
-        return ''
-    }
-
     private List<String> getMountVols(TaskRun task) {
         List<String> volumes = []
         volumes << floatConf.getWorkDirVol(workDir.uri)
@@ -239,12 +206,18 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
         final jobName = floatJobs.getJobName(task.id)
         final String tag = "${FloatConf.NF_JOB_ID}:${jobName}"
+        final container = task.getContainer()
+        if (!container) {
+            throw new AbortOperationException("container is empty." +
+                    "you can specify a default container image " +
+                    "with `process.container`")
+        }
         def cmd = getSubmitCmdPrefix()
         cmd << 'sbatch'
         for (def vol : getMountVols(task)) {
             cmd << '--dataVolume' << vol
         }
-        cmd << '--image' << getContainer(task)
+        cmd << '--image' << task.getContainer()
         cmd << '--cpu' << task.config.getCpus().toString()
         cmd << '--mem' << getMemory(task)
         cmd << '--job' << getScriptFilePath(scriptFile)
