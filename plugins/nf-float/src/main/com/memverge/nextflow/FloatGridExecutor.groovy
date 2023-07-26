@@ -20,6 +20,7 @@ import groovy.util.logging.Slf4j
 import nextflow.exception.AbortOperationException
 import nextflow.executor.AbstractGridExecutor
 import nextflow.file.FileHelper
+import nextflow.fusion.FusionHelper
 import nextflow.processor.TaskRun
 import nextflow.util.Escape
 import nextflow.util.ServiceName
@@ -39,8 +40,6 @@ class FloatGridExecutor extends AbstractGridExecutor {
     static final int DFT_MEM_GB = 1
 
     private FloatJobs _floatJobs
-
-    private AtomicInteger serial = new AtomicInteger()
 
     private Path binDir
 
@@ -144,10 +143,9 @@ class FloatGridExecutor extends AbstractGridExecutor {
      *
      * @return
      */
-    private List<String> getSubmitCmdPrefix() {
-        final i = serial.incrementAndGet()
+    private List<String> getSubmitCmdPrefix(Integer index) {
         final addresses = floatConf.addresses
-        final address = addresses[i % (addresses.size())]
+        final address = addresses[index % (addresses.size())]
         return floatConf.getCliPrefix(address)
     }
 
@@ -189,6 +187,10 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     private List<String> getMountVols(TaskRun task) {
+        if (isFusionEnabled()) {
+            return []
+        }
+
         List<String> volumes = []
         volumes << floatConf.getWorkDirVol(workDir.uri)
 
@@ -200,8 +202,20 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return ret
     }
 
+    private Map<String,String> getEnv(FloatTaskHandler handler) {
+        return isFusionEnabled()
+            ? handler.fusionLauncher().fusionEnv()
+            : [:]
+    }
+
     @Override
     List<String> getSubmitCommandLine(TaskRun task, Path scriptFile) {
+        null
+    }
+
+    List<String> getSubmitCommandLine(FloatTaskHandler handler, Path scriptFile) {
+        final task = handler.task
+
         validate(task)
 
         final jobName = floatJobs.getJobName(task.id)
@@ -212,7 +226,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
                     "you can specify a default container image " +
                     "with `process.container`")
         }
-        def cmd = getSubmitCmdPrefix()
+        def cmd = getSubmitCmdPrefix(task.index)
         cmd << 'sbatch'
         for (def vol : getMountVols(task)) {
             cmd << '--dataVolume' << vol
@@ -220,18 +234,35 @@ class FloatGridExecutor extends AbstractGridExecutor {
         cmd << '--image' << task.getContainer()
         cmd << '--cpu' << task.config.getCpus().toString()
         cmd << '--mem' << getMemory(task)
-        cmd << '--job' << getScriptFilePath(scriptFile)
+        cmd << '--job' << getScriptFilePath(handler, scriptFile)
+        def env = getEnv(handler)
+        if (env) {
+            cmd << '--env' << env.collect(e -> "${e.key}=${e.value}").join(',')
+        }
         cmd << '--customTag' << tag
         cmd.addAll(getExtra(task))
         log.info "[float] submit job: ${toLogStr(cmd)}"
         return cmd
     }
 
-    private String getScriptFilePath(Path scriptFile) {
+    /**
+     * TODO: should be removed when float CLI supports stdin script
+     */
+    private String getScriptFilePath(FloatTaskHandler handler, Path scriptFile) {
+        if (isFusionEnabled()) {
+            return saveFusionScriptFile(handler, scriptFile)
+        }
         if (workDir.getScheme() == "s3") {
             return downloadScriptFile(scriptFile)
         }
         return scriptFile.toString()
+    }
+
+    protected String saveFusionScriptFile(FloatTaskHandler handler, Path scriptFile) {
+        final localTmp = File.createTempFile("nextflow", scriptFile.name)
+        log.info("save fusion launcher script")
+        localTmp.text = '#!/bin/bash\n' + handler.fusionSubmitCli().join(' ') + '\n'
+        return localTmp.getAbsolutePath()
     }
 
     protected String downloadScriptFile(Path scriptFile) {
@@ -401,5 +432,15 @@ class FloatGridExecutor extends AbstractGridExecutor {
     @Override
     boolean isContainerNative() {
         return true
+    }
+
+    @Override
+    boolean pipeLauncherScript() {
+        return isFusionEnabled()
+    }
+
+    @Override
+    boolean isFusionEnabled() {
+        return FusionHelper.isFusionEnabled(session)
     }
 }
