@@ -20,6 +20,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.executor.GridTaskHandler
 import nextflow.processor.TaskRun
+
 /**
  * Float task handler
  */
@@ -38,7 +39,7 @@ class FloatTaskHandler extends GridTaskHandler {
     protected ProcessBuilder createProcessBuilder() {
 
         // -- log the submit command
-        final cli = executor.getSubmitCommandLine(task, wrapperFile)
+        final cli = ((FloatGridExecutor)executor).getSubmitCommandLine(this, wrapperFile)
         log.trace "start process ${task.name} > cli: ${cli}"
 
         // -- prepare submit process
@@ -51,6 +52,14 @@ class FloatTaskHandler extends GridTaskHandler {
         }
 
         return builder
+    }
+
+    /**
+     * Override the grid task handler to make the fusion launcher
+     * script container-native.
+     */
+    protected String fusionStdinWrapper() {
+        return '#!/bin/bash\n' + fusionSubmitCli().join(' ') + '\n'
     }
 
 }
