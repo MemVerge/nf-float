@@ -53,7 +53,7 @@ Just make sure you have proper internet access.
 
 ```groovy
 plugins {
-    id 'nf-float@0.2.0'
+    id 'nf-float@0.2.1'
 }
 ```
 
@@ -66,9 +66,9 @@ Go to the folder where you just install the `nextflow` command line.
 Let's call this folder the Nextflow home directory.
 Create the float plugin folder with:
 ```bash
-mkdir -p .nextflow/plugins/nf-float-0.2.0
+mkdir -p .nextflow/plugins/nf-float-0.2.1
 ```
-where `0.2.0` is the version of the float plugin.  This version number should 
+where `0.2.1` is the version of the float plugin.  This version number should 
 align with the version in of your plugin and the property in your configuration
 file. (check the configuration section)
 
@@ -76,7 +76,7 @@ Retrieve your plugin zip file and unzip it in this folder.
 If everything goes right, you should be able to see two sub-folders:
 
 ```bash
-$ ll .nextflow/plugins/nf-float-0.2.0/
+$ ll .nextflow/plugins/nf-float-0.2.1/
 total 48
 drwxr-xr-x 4 ec2-user ec2-user    51 Jan  5 07:17 classes
 drwxr-xr-x 2 ec2-user ec2-user    25 Jan  5 07:17 META-INF
@@ -89,7 +89,7 @@ file with the command line option `-c`.  Here is a sample of the configuration.
 
 ```groovy
 plugins {
-    id 'nf-float@0.2.0'
+    id 'nf-float@0.2.1'
 }
 
 workDir = '/mnt/memverge/shared'
@@ -158,7 +158,7 @@ Unknown config secret 'MMC_USERNAME'
 To enable s3 as work directory, user need to set work directory to a s3 bucket.
 ```groovy
 plugins {
-    id 'nf-float@0.2.0'
+    id 'nf-float@0.2.1'
 }
 
 workDir = 's3://bucket/path'
@@ -197,6 +197,56 @@ Nextflow looks for AWS credentials in the following order:
 
 For detail, check NextFlow's document.
 https://www.nextflow.io/docs/latest/amazons3.html#security-credentials
+
+Tests done for s3 work directory support:
+* trivial sequence and scatter workflow.
+* the test profile of nf-core/rnaseq
+* the test profile of nf-core/sarek
+
+
+### Configure fusion FS over s3
+
+Since release 0.2.1, we support fusion FS over s3.  To enable fusion, you need to add following configurations
+```groovy
+wave.enabled = true // 1
+
+fusion {
+  enabled = true // 2
+  exportStorageCredentials = true // 3
+  exportAwsAccessKeys = true // 4
+}
+```
+1. fusion needs wave support.
+2. enable fusion explicitly
+3. export the aws credentials as environment variable.
+4. same as 3.  Different nextflow versions may require different option.  Supply both 3 & 4 if you are not sure.
+
+In additional, you may want to:
+* point your work directory to a location in s3.
+* specify your s3 credentials in the `aws` scope.
+
+When fusion is enabled, you can find similar submit command line in your `.nextflow.log`
+```
+float -a 34.71.114.123 -u admin -p *** submit --image \
+wave.seqera.io/wt/dfd4c4e2d48d/biocontainers/mulled-v2-***:***-0 \
+--cpu 12 --mem 72 --job /tmp/nextflow5377817282489183149.command.run \
+--env FUSION_WORK=/fusion/s3/cedric-memverge-test/nf-work/work/31/a4b682beb93c944fbd3a342ffc41c5 \
+--env AWS_ACCESS_KEY_ID=*** --env AWS_SECRET_ACCESS_KEY=*** \
+--env FUSION_TAGS=[.command.*|.exitcode|.fusion.*](nextflow.io/metadata=true),[*](nextflow.io/temporary=true) \
+--extraContainerOpts --privileged --customTag nf-job-id:znzjht-4
+```
+* the task image is wrapped by a layer provided by wave.
+  __note__: releases prior to MMC 2.3.1 has bug that fails the image pull requests to the wave registry.  
+  please upgrade to the latest MMC master.
+* `FUSION_WORK` and `FUSION_TAGS` is added as environment variables.
+* aws credentials is added as environment variables.
+* use `extraContainerOpts` to make sure we run the container in privileged mode.
+  __note__: this option requires MMC 2.3 or later.
+
+Tests for the fusion support.
+* trivial sequence and scatter workflow.
+* the test profile of nf-core/rnaseq
+* the test profile of nf-core/sarek
 
 ## Task Sample
 

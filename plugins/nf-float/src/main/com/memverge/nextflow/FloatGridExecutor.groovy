@@ -27,7 +27,6 @@ import nextflow.util.ServiceName
 
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Collectors
 
 /**
@@ -202,15 +201,15 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return ret
     }
 
-    private Map<String,String> getEnv(FloatTaskHandler handler) {
+    private Map<String, String> getEnv(FloatTaskHandler handler) {
         return isFusionEnabled()
-            ? handler.fusionLauncher().fusionEnv()
-            : [:]
+                ? handler.fusionLauncher().fusionEnv()
+                : [:]
     }
 
     @Override
     List<String> getSubmitCommandLine(TaskRun task, Path scriptFile) {
-        null
+        return getSubmitCommandLine(new FloatTaskHandler(task, this), scriptFile)
     }
 
     List<String> getSubmitCommandLine(FloatTaskHandler handler, Path scriptFile) {
@@ -227,17 +226,18 @@ class FloatGridExecutor extends AbstractGridExecutor {
                     "with `process.container`")
         }
         def cmd = getSubmitCmdPrefix(task.index)
-        cmd << 'sbatch'
-        for (def vol : getMountVols(task)) {
-            cmd << '--dataVolume' << vol
-        }
+        cmd << 'submit'
+        getMountVols(task).forEach { cmd << '--dataVolume' << it }
         cmd << '--image' << task.getContainer()
         cmd << '--cpu' << task.config.getCpus().toString()
         cmd << '--mem' << getMemory(task)
         cmd << '--job' << getScriptFilePath(handler, scriptFile)
-        def env = getEnv(handler)
-        if (env) {
-            cmd << '--env' << env.collect(e -> "${e.key}=${e.value}").join(',')
+        getEnv(handler).each { key, val ->
+            cmd << '--env' << "${key}=${val}".toString()
+        }
+        if (isFusionEnabled()) {
+            cmd << '--extraContainerOpts'
+            cmd << '--privileged'
         }
         cmd << '--customTag' << tag
         cmd.addAll(getExtra(task))
@@ -258,7 +258,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return scriptFile.toString()
     }
 
-    protected String saveFusionScriptFile(FloatTaskHandler handler, Path scriptFile) {
+    protected static String saveFusionScriptFile(FloatTaskHandler handler, Path scriptFile) {
         final localTmp = File.createTempFile("nextflow", scriptFile.name)
         log.info("save fusion launcher script")
         localTmp.text = '#!/bin/bash\n' + handler.fusionSubmitCli().join(' ') + '\n'
@@ -276,7 +276,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     /**
-     * Parse the string returned by the {@code float sbatch} and extract
+     * Parse the string returned by the {@code float submit} and extract
      * the job ID string
      *
      * @param text The string returned when submitting the job
@@ -331,9 +331,10 @@ class FloatGridExecutor extends AbstractGridExecutor {
         jobIds.forEach {
             def id = it.toString()
             def cmd = getCmdPrefixForJob(id)
-            cmd << 'scancel'
+            cmd << 'cancel'
             cmd << '-j'
             cmd << id
+            cmd << '-f'
             log.info "[float] cancel job: ${toLogStr(cmd)}"
             ret.add(cmd)
         }
@@ -349,7 +350,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     @Override
     protected List<String> getKillCommand() {
         def cmd = getCmdPrefix0()
-        cmd << 'scancel'
+        cmd << 'cancel'
         cmd << '-j'
         log.info "[float] cancel job: ${toLogStr(cmd)}"
         return cmd
@@ -386,7 +387,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
     private List<String> getQueueCmdOfOC(String oc = "") {
         def cmd = floatConf.getCliPrefix(oc)
-        cmd << 'squeue'
+        cmd << 'list'
         cmd << '--format'
         cmd << 'json'
         log.info "[float] query job status: ${toLogStr(cmd)}"
@@ -404,6 +405,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             QueueStatus status = STATUS_MAP.getOrDefault(value, QueueStatus.UNKNOWN)
             ret[key] = status
         }
+        log.info "[float] got job status $ret"
         return ret
     }
 

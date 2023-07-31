@@ -60,7 +60,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ') == ['float', '-a', addr,
                           '-u', user,
                           '-p', pass,
-                          'scancel', '-j', jobID].join(' ')
+                          'cancel', '-j', jobID].join(' ')
     }
 
     def "kill commands"() {
@@ -73,7 +73,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
             return ['float', '-a', addr,
                     '-u', user,
                     '-p', pass,
-                    'scancel', '-j', jobID].join(' ')
+                    'cancel', '-j', jobID, '-f'].join(' ')
         }
 
         then:
@@ -354,7 +354,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd == ['float', '-a', addr,
                 '-u', user,
                 '-p', pass,
-                'squeue', '--format', 'json']
+                'list', '--format', 'json']
     }
 
     def "retrieve the credentials from env"() {

@@ -24,6 +24,7 @@ import spock.lang.Specification
 
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.concurrent.atomic.AtomicInteger
 
 class BaseTest extends Specification {
     def setEnv(String key, String value) {
@@ -52,6 +53,7 @@ class FloatBaseTest extends BaseTest {
     def script = '/path/job.sh'
     def workDir = '/mnt/nfs/shared'
     def taskID = new TaskId(55)
+    private AtomicInteger taskSerial = new AtomicInteger()
 
     class FloatTestExecutor extends FloatGridExecutor {
         @Override
@@ -90,6 +92,8 @@ class FloatBaseTest extends BaseTest {
         task.processor.getExecutor() >> exec
         task.config = conf
         task.id = taskID
+        task.index = taskSerial.incrementAndGet()
+        task.workDir = Paths.get(workDir)
         return task
     }
 
@@ -101,7 +105,7 @@ class FloatBaseTest extends BaseTest {
         return ['float', '-a', param.addr ?: addr,
                 '-u', user,
                 '-p', pass,
-                'sbatch',
+                'submit',
                 '--dataVolume', param.nfs ?: nfs + ':' + workDir,
                 '--image', param.image ?: image,
                 '--cpu', param.cpu ?: cpu.toString(),
