@@ -88,29 +88,28 @@ class FloatJobs {
 
             def currentSt = job2status.get(jobID, Unknown)
             def workDir = task2workDir.get(taskID)
-            if (!workDir) {
-                return
-            }
-            // check the availability of result files
-            // call list files to update the folder cache
-            FileHelper.listDirectory(workDir)
-            def files = ['.command.out', '.command.err', '.exitcode']
-            if (currentSt != Completed && st == Completed) {
-                for (filename in files) {
-                    def name = workDir.resolve(filename)
-                    try {
-                        !FileHelper.checkIfExists(name, [checkIfExists: true])
-                    } catch (NoSuchFileException ex) {
-                        log.info("[float] job $jobID completed " +
-                                "but file not found: $ex")
-                        return
+            if (workDir) {
+                // check the availability of result files
+                // call list files to update the folder cache
+                FileHelper.listDirectory(workDir)
+                def files = ['.command.out', '.command.err', '.exitcode']
+                if (currentSt != Completed && st == Completed) {
+                    for (filename in files) {
+                        def name = workDir.resolve(filename)
+                        try {
+                            !FileHelper.checkIfExists(name, [checkIfExists: true])
+                        } catch (NoSuchFileException ex) {
+                            log.info("[float] job $jobID completed " +
+                                    "but file not found: $ex")
+                            return
+                        }
                     }
+                    log.debug("[float] found $files in: $workDir")
                 }
-                log.debug("[float] found $files in: $workDir")
             }
             job2status.put(jobID, st)
         }
-        log.debug("[float] update op-center $oc job status: $job2status")
+        log.debug "[float] update op-center $oc job status: $job2status"
         return job2status
     }
 

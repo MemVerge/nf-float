@@ -135,7 +135,7 @@ class FloatConf {
     }
 
     private static def warnDeprecated(String deprecated, String replacement) {
-        log.warn "[flaot] config option `$deprecated` " +
+        log.warn "[float] config option `$deprecated` " +
                 "is no longer supported, " +
                 "use `$replacement` instead"
     }

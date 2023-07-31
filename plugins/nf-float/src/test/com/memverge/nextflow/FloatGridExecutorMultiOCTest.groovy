@@ -35,11 +35,12 @@ class FloatGridExecutorMultiOCTest extends FloatBaseTest {
     def "submit job with round robin"() {
         given:
         def exec = newTestExecutor()
-        def task = newTask(exec)
 
         when:
-        def cmd1 = exec.getSubmitCommandLine(task, Paths.get(script))
-        def cmd2 = exec.getSubmitCommandLine(task, Paths.get(script))
+        def cmd1 = exec.getSubmitCommandLine(
+                newTask(exec), Paths.get(script))
+        def cmd2 = exec.getSubmitCommandLine(
+                newTask(exec), Paths.get(script))
         def expected1 = submitCmd(addr: "fb")
         def expected2 = submitCmd(addr: "fa")
 
@@ -59,9 +60,9 @@ class FloatGridExecutorMultiOCTest extends FloatBaseTest {
 
         then:
         cmd1.join(' ') == "float -a fa -u ${user} -p ${pass} " +
-                "squeue --format json"
+                "list --format json"
         cmd2.join(' ') == "float -a fb -u ${user} -p ${pass} " +
-                "squeue --format json"
+                "list --format json"
     }
 
     def "input multiple addresses as list"() {
@@ -70,10 +71,12 @@ class FloatGridExecutorMultiOCTest extends FloatBaseTest {
         def task = newTask(exec)
 
         when:
-        def cmd1 = exec.getSubmitCommandLine(task, Paths.get(script))
-        def cmd2 = exec.getSubmitCommandLine(task, Paths.get(script))
-        def expected1 = submitCmd(addr: "fb")
-        def expected2 = submitCmd(addr: "fa")
+        def cmd1 = exec.getSubmitCommandLine(
+                newTask(exec), Paths.get(script))
+        def cmd2 = exec.getSubmitCommandLine(
+                newTask(exec), Paths.get(script))
+        def expected1 = submitCmd(addr: "fa")
+        def expected2 = submitCmd(addr: "fb")
 
         then:
         cmd1.join(' ') == expected1.join(' ')
