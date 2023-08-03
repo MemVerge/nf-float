@@ -94,6 +94,7 @@ class FloatBaseTest extends BaseTest {
         task.id = taskID
         task.index = taskSerial.incrementAndGet()
         task.workDir = Paths.get(workDir)
+        task.name = "foo (${task.index})"
         return task
     }
 

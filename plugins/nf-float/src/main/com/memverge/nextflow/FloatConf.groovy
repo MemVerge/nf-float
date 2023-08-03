@@ -44,6 +44,8 @@ class FloatConf {
     String s3secretKey
 
     /** parameters for submitting the tasks */
+    String vmPolicy
+    String migratePolicy
     String commonExtra
 
     /**
@@ -118,6 +120,13 @@ class FloatConf {
                     .findAll { it.size() > 0 }
         }
         this.nfs = floatNode.nfs
+
+        if (floatNode.vmPolicy) {
+            this.vmPolicy = collapseMapToString(floatNode.vmPolicy as Map)
+        }
+        if (floatNode.migratePolicy) {
+            this.migratePolicy = collapseMapToString(floatNode.migratePolicy as Map)
+        }
         this.commonExtra = floatNode.commonExtra
 
         if (floatNode.cpu)
@@ -134,13 +143,22 @@ class FloatConf {
             warnDeprecated("float.container", "process.container")
     }
 
-    private static def warnDeprecated(String deprecated, String replacement) {
+    private String collapseMapToString(Map map) {
+        final collapsedStr = map
+                .toConfigObject()
+                .flatten()
+                .collect( (k, v) -> "${k}=${v}" )
+                .join(',')
+        return "[${collapsedStr}]"
+    }
+
+    private static void warnDeprecated(String deprecated, String replacement) {
         log.warn "[float] config option `$deprecated` " +
                 "is no longer supported, " +
                 "use `$replacement` instead"
     }
 
-    private def initAwsConf(Map conf) {
+    private void initAwsConf(Map conf) {
         def cred = Global.getAwsCredentials(System.getenv(), conf)
         if (cred && cred.size() > 1) {
             s3accessKey = cred[0]

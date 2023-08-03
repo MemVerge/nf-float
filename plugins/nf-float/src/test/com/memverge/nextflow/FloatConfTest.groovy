@@ -186,4 +186,26 @@ class FloatConfTest extends BaseTest {
         then:
         volume == 'nfs://1.2.3.4/work/dir:/local'
     }
+
+    def "get vm policy from config"() {
+        expect:
+        FloatConf.getConf([float: [vmPolicy: CONF]]).vmPolicy == STR
+
+        where:
+        CONF                                              | STR
+        [spotOnly:true,retryLimit:10,retryInterval:'30s'] | '[spotOnly=true,retryLimit=10,retryInterval=30s]'
+        [spotOnly:true,priceLimit:0.1]                    | '[spotOnly=true,priceLimit=0.1]'
+    }
+
+    def "get migrate policy from config"() {
+        expect:
+        FloatConf.getConf([float: [migratePolicy: CONF]]).migratePolicy == STR
+
+        where:
+        CONF                                                | STR
+        [disable:true]                                      | '[disable=true]'
+        [cpu:[upperBoundRatio:90,upperBoundDuration:'10s']] | '[cpu.upperBoundRatio=90,cpu.upperBoundDuration=10s]'
+        [cpu:[lowerBoundRatio:30],mem:[upperBoundRatio:90]] | '[cpu.lowerBoundRatio=30,mem.upperBoundRatio=90]'
+        [cpu:[step:50]]                                     | '[cpu.step=50]'
+    }
 }

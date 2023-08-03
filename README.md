@@ -110,13 +110,20 @@ process {
 * `workDir` is where we mount the NFS and where Nextflow put the process files.
 * In the `float` section, users must supply the address of the MMCE operation
   center and the proper credentials.
-  * `address` address of your operation center(s).  Separate multiple addresses with `,`.
-  * `username` and `password` are the credentials for your operation center
-  * `nfs` points to the location of the NFS.
-  * `commonExtra` allows the user to specify other submit parameters.  This parameter
-    will be appended to every float submit command.
-* In the `process` scope, we assign `float` to `executor` to tell Nextflow to run
-  the task with the float executor.
+* In the `process` scope, we specify `executor = 'float'` to tell Nextflow to execute
+  tasks with the Float executor.
+
+Available `float` config options: 
+
+* `address`: address of your operation center(s).  Separate multiple addresses with `,`.
+* `username`, `password`: the credentials for your operation center
+* `nfs`: the location of the NFS (if using NFS for the work directory)
+* `migratePolicy`: the migration policy used by WaveRider, specified as a map.  Refer to
+              the CLI usage for the list of available options.
+* `vmPolicy`: the VM creation policy, specified as a map.  Refer to the CLI usage
+              for the list of available options.
+* `commonExtra`: allows the user to specify other submit CLI options.  This parameter
+                 will be appended to every float submit command.
 
 ### Configure with environment variables
 
@@ -226,14 +233,18 @@ In additional, you may want to:
 * specify your s3 credentials in the `aws` scope.
 
 When fusion is enabled, you can find similar submit command line in your `.nextflow.log`
-```
-float -a 34.71.114.123 -u admin -p *** submit --image \
-wave.seqera.io/wt/dfd4c4e2d48d/biocontainers/mulled-v2-***:***-0 \
---cpu 12 --mem 72 --job /tmp/nextflow5377817282489183149.command.run \
---env FUSION_WORK=/fusion/s3/cedric-memverge-test/nf-work/work/31/a4b682beb93c944fbd3a342ffc41c5 \
---env AWS_ACCESS_KEY_ID=*** --env AWS_SECRET_ACCESS_KEY=*** \
---env FUSION_TAGS=[.command.*|.exitcode|.fusion.*](nextflow.io/metadata=true),[*](nextflow.io/temporary=true) \
---extraContainerOpts --privileged --customTag nf-job-id:znzjht-4
+```bash
+float -a 34.71.114.123 -u admin -p '***' submit
+    --image 'wave.seqera.io/wt/dfd4c4e2d48d/biocontainers/mulled-v2-***:***-0'
+    --cpu 12
+    --mem 72
+    --job /tmp/nextflow5377817282489183149.command.run
+    --env FUSION_WORK=/fusion/s3/cedric-memverge-test/nf-work/work/31/a4b682beb93c944fbd3a342ffc41c5
+    --env AWS_ACCESS_KEY_ID=***
+    --env AWS_SECRET_ACCESS_KEY=***
+    --env 'FUSION_TAGS=[.command.*|.exitcode|.fusion.*](nextflow.io/metadata=true),[*](nextflow.io/temporary=true)'
+    --extraContainerOpts --privileged
+    --customTag nf-job-id:znzjht-4
 ```
 * the task image is wrapped by a layer provided by wave.
   __note__: releases prior to MMC 2.3.1 has bug that fails the image pull requests to the wave registry.  
@@ -248,7 +259,27 @@ Tests for the fusion support.
 * the test profile of nf-core/rnaseq
 * the test profile of nf-core/sarek
 
-## Task Sample
+### Configure VM creation and migration policies
+
+While the VM and migration policies can be specified like any CLI option via `float.commonExtra`,
+they can also be specified using the config options `float.vmPolicy` and `float.migratePolicy` as maps:
+
+```groovy
+float {
+    vmPolicy = [
+        spotFirst: true,
+        retryLimit: 3,
+        retryInterval: '10m'
+    ]
+
+    migratePolicy = [
+        cpu: [upperBoundRatio: 90, upperBoundDuration: '10s'],
+        mem: [lowerBoundRatio: 20, upperBoundRatio: 90]
+    ]
+}
+```
+
+## Process definition
 
 For each process, users could supply their requirements for the CPU, memory and container image using the standard Nextflow process directives.
 Here is an example of a hello world workflow.
@@ -273,12 +304,16 @@ workflow {
 }
 ```
 
-* `executor 'float'` - tells Nextflow to execute tasks with Float.
-* `cpus` - specifies the number of cores required by this process.
-* `memory` specifies the memory.
-* `container` - specifies the container image.
-* `extra` - specifies extra parameters for the job.  It will be merged with
-            the `commonExtra` parameter.
+The following process directives are supported for specifying task resources:
+
+* `conda` (only when using [Wave](https://seqera.io/wave/))
+* `container`
+* `cpus`
+* `disk` (controls the size of the root volume)
+* `machineType`
+* `memory`
+* `resourceLabels`
+* `time`
 
 ## Run the Workflow
 
@@ -288,36 +323,6 @@ file and task file as arguments.  Here is an example.
 ```bash
 ./nextflow run samples/tutorial.nf -c conf/float-rt.conf
 ```
-
-## Plugin Assets
-                    
-- `settings.gradle`
- 
-    Gradle project settings. 
-
-- `plugins/nf-float`
-    
-    The plugin implementation base directory.
-
-- `plugins/nf-float/build.gradle` 
-    
-    Plugin Gradle build file
-
-- `plugins/nf-float/src/resources/META-INF/MANIFEST.MF` 
-    
-    Manifest file defining the plugin attributes.
-
-- `plugins/nf-float/src/resources/META-INF/extensions.idx`
-    
-    This file declares one or more extension classes provided by the plugin.
-
-- `plugins/nf-float/src/main` 
-
-    The plugin implementation sources.
-
-- `plugins/nf-float/src/test` 
-                             
-    The plugin unit tests. 
 
 ## Unit testing 
 
