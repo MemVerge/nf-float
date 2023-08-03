@@ -207,6 +207,19 @@ class FloatGridExecutor extends AbstractGridExecutor {
                 : [:]
     }
 
+    private Map<String,String> getCustomTags(TaskRun task) {
+        final result = new LinkedHashMap<String,String>(10)
+        result[FloatConf.NF_JOB_ID] = floatJobs.getJobName(task.id)
+        result.'nextflow.io/processName' = task.processor.name
+        result.'nextflow.io/runName' = session.runName
+        result.'nextflow.io/sessionId' = "uuid-${session.uniqueId}".toString()
+        result.'nextflow.io/taskName' = task.name
+        final resourceLabels = task.config.getResourceLabels()
+        if( resourceLabels )
+            result.putAll(resourceLabels)
+        return result
+    }
+
     @Override
     List<String> getSubmitCommandLine(TaskRun task, Path scriptFile) {
         return getSubmitCommandLine(new FloatTaskHandler(task, this), scriptFile)
@@ -217,11 +230,9 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
         validate(task)
 
-        final jobName = floatJobs.getJobName(task.id)
-        final String tag = "${FloatConf.NF_JOB_ID}:${jobName}"
         final container = task.getContainer()
         if (!container) {
-            throw new AbortOperationException("container is empty." +
+            throw new AbortOperationException("container is empty. " +
                     "you can specify a default container image " +
                     "with `process.container`")
         }
@@ -239,7 +250,24 @@ class FloatGridExecutor extends AbstractGridExecutor {
             cmd << '--extraContainerOpts'
             cmd << '--privileged'
         }
-        cmd << '--customTag' << tag
+        getCustomTags(task).each { key, val ->
+            cmd << '--customTag' << "${key}:${val}".toString()
+        }
+        if (task.config.getMachineType()) {
+            cmd << '--instType' << task.config.getMachineType()
+        }
+        if (task.config.getDisk()) {
+            cmd << '--rootVolSize' << task.config.getDisk().toGiga().toString()
+        }
+        if (task.config.getTime()) {
+            cmd << '--timeLimit' << "${task.config.getTime().toSeconds()}s".toString()
+        }
+        if (floatConf.vmPolicy) {
+            cmd << '--vmPolicy' << floatConf.vmPolicy
+        }
+        if (floatConf.migratePolicy) {
+            cmd << '--migratePolicy' << floatConf.migratePolicy
+        }
         cmd.addAll(getExtra(task))
         log.info "[float] submit job: ${toLogStr(cmd)}"
         return cmd

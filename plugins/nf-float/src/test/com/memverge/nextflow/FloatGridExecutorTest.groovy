@@ -269,13 +269,73 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ') == expected.join(' ')
     }
 
+    def "use machine type directive"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, new TaskConfig(
+                container: image,
+                machineType: 't2.xlarge',
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains('--instType t2.xlarge')
+    }
+
+    def "use disk directive"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, new TaskConfig(
+                container: image,
+                disk: '40G',
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains('--rootVolSize 40')
+    }
+
+    def "use time directive"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, new TaskConfig(
+                container: image,
+                time: '24h',
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains('--timeLimit 86400s')
+    }
+
+    def "use resourceLabels directive"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, new TaskConfig(
+                container: image,
+                resourceLabels: [foo: 'bar'],
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains('--customTag foo:bar')
+    }
+
     private def taskStatus(int i, String st) {
         return """
-            {                                                           
-                "id": "task$i",                          
-                "name": "tJob-$i",                                                                                            
-                "user": "admin",                                        
-                "imageID": "docker.io/memverge/cactus:latest",          
+            {
+                "id": "task$i",
+                "name": "tJob-$i",
+                "user": "admin",
+                "imageID": "docker.io/memverge/cactus:latest",
                 "status": "$st",
                 "customTags": {
                     "nf-job-id": "tJob-$i"
