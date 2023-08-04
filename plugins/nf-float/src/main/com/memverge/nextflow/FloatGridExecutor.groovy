@@ -21,6 +21,7 @@ import nextflow.exception.AbortOperationException
 import nextflow.executor.AbstractGridExecutor
 import nextflow.file.FileHelper
 import nextflow.fusion.FusionHelper
+import nextflow.processor.TaskId
 import nextflow.processor.TaskRun
 import nextflow.util.Escape
 import nextflow.util.ServiceName
@@ -36,7 +37,9 @@ import java.util.stream.Collectors
 @ServiceName('float')
 @CompileStatic
 class FloatGridExecutor extends AbstractGridExecutor {
-    static final int DFT_MEM_GB = 1
+    private static final int DFT_MEM_GB = 1
+    private static final long FUSION_MIN_VOL_SIZE = 80
+    private static final long MIN_VOL_SIZE = 40
 
     private FloatJobs _floatJobs
 
@@ -131,9 +134,32 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return ret.findAll { it.length() > 0 }
     }
 
-    private List<String> getCmdPrefixForJob(String jobID) {
-        final oc = floatJobs.getOc(jobID)
+    private List<String> getCmdPrefixForJob(String floatJobID) {
+        final oc = floatJobs.getOc(floatJobID)
         return floatConf.getCliPrefix(oc)
+    }
+
+    FloatJob getJob(TaskId taskId) {
+        def nfJobID = floatJobs.getNfJobID(taskId)
+        def job = floatJobs.nfJobID2job.get(nfJobID)
+        if (job == null) {
+            return null
+        }
+        def cmd = getCmdPrefixForJob(job.floatJobID)
+        cmd << 'show'
+        cmd << '-j'
+        cmd << job.floatJobID
+
+        try {
+            final res = Global.execute(cmd)
+
+            if (res.succeeded) {
+                job = FloatJob.parse(res.out)
+            }
+        } catch (Exception e) {
+            log.warn "[float] failed to retrieve job status $nfJobID, float: ${job.floatJobID}", e
+        }
+        return job
     }
 
     /**
@@ -207,15 +233,19 @@ class FloatGridExecutor extends AbstractGridExecutor {
                 : [:]
     }
 
-    private Map<String,String> getCustomTags(TaskRun task) {
-        final result = new LinkedHashMap<String,String>(10)
-        result[FloatConf.NF_JOB_ID] = floatJobs.getJobName(task.id)
-        result.'nextflow.io/processName' = task.processor.name
-        result.'nextflow.io/runName' = session.runName
-        result.'nextflow.io/sessionId' = "uuid-${session.uniqueId}".toString()
-        result.'nextflow.io/taskName' = task.name
+    private Map<String, String> getCustomTags(TaskRun task) {
+        final result = new LinkedHashMap<String, String>(10)
+        result[FloatConf.NF_JOB_ID] = floatJobs.getNfJobID(task.id)
+        result[FloatConf.NF_SESSION_ID] = "uuid-${session.uniqueId}".toString()
+        result[FloatConf.NF_TASK_NAME] = task.name
+        if (task.processor.name) {
+            result[FloatConf.NF_PROCESS_NAME] = task.processor.name
+        }
+        if (session.runName) {
+            result[FloatConf.NF_RUN_NAME] = session.runName
+        }
         final resourceLabels = task.config.getResourceLabels()
-        if( resourceLabels )
+        if (resourceLabels)
             result.putAll(resourceLabels)
         return result
     }
@@ -225,11 +255,23 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return getSubmitCommandLine(new FloatTaskHandler(task, this), scriptFile)
     }
 
+    private static String toTag(String value) {
+        final sizeLimit = 63
+        value = value.replaceAll("[_\\s]", "-")
+        value = value.replaceAll("[^a-zA-Z0-9-]", "")
+        if (value.size() > sizeLimit) {
+            value = value.substring(0, sizeLimit)
+        }
+        return value
+    }
+
     List<String> getSubmitCommandLine(FloatTaskHandler handler, Path scriptFile) {
         final task = handler.task
 
         validate(task)
 
+        final jobName = floatJobs.getNfJobID(task.id)
+        final String tag = "${FloatConf.NF_JOB_ID}:${jobName}"
         final container = task.getContainer()
         if (!container) {
             throw new AbortOperationException("container is empty. " +
@@ -251,14 +293,12 @@ class FloatGridExecutor extends AbstractGridExecutor {
             cmd << '--privileged'
         }
         getCustomTags(task).each { key, val ->
-            cmd << '--customTag' << "${key}:${val}".toString()
+            cmd << '--customTag' << "${toTag(key)}:${toTag(val)}".toString()
         }
         if (task.config.getMachineType()) {
             cmd << '--instType' << task.config.getMachineType()
         }
-        if (task.config.getDisk()) {
-            cmd << '--rootVolSize' << task.config.getDisk().toGiga().toString()
-        }
+        addVolSize(cmd, task)
         if (task.config.getTime()) {
             cmd << '--timeLimit' << "${task.config.getTime().toSeconds()}s".toString()
         }
@@ -271,6 +311,21 @@ class FloatGridExecutor extends AbstractGridExecutor {
         cmd.addAll(getExtra(task))
         log.info "[float] submit job: ${toLogStr(cmd)}"
         return cmd
+    }
+
+    private void addVolSize(List<String> cmd, TaskRun task) {
+        Long size = MIN_VOL_SIZE
+
+        def disk = task.config.getDisk()
+        if (disk) {
+            size = Math.max(size, disk.toGiga())
+        }
+        if (isFusionEnabled()) {
+            size = Math.max(size, FUSION_MIN_VOL_SIZE)
+        }
+        if (size > MIN_VOL_SIZE) {
+            cmd << '--imageVolSize' << size.toString()
+        }
     }
 
     /**
@@ -312,18 +367,18 @@ class FloatGridExecutor extends AbstractGridExecutor {
      */
     @Override
     def parseJobId(String text) {
-        return CmdResult.with(text).jobID()
+        return FloatJob.parse(text).floatJobID
     }
 
     /**
      * Kill a grid job
      *
-     * @param jobId The ID of the job to kill,
+     * @param floatJobID The ID of the job to kill,
      *        could be a string collection
      */
     @Override
-    void killTask(def jobId) {
-        def cmdList = killTaskCommands(jobId)
+    void killTask(def floatJobID) {
+        def cmdList = killTaskCommands(floatJobID)
         cmdList.parallelStream().map { cmd ->
             def proc = new ProcessBuilder(cmd).redirectErrorStream(true).start()
             proc.waitForOrKill(10_000)
@@ -357,11 +412,11 @@ class FloatGridExecutor extends AbstractGridExecutor {
         }
         List<List<String>> ret = []
         jobIds.forEach {
-            def id = it.toString()
-            def cmd = getCmdPrefixForJob(id)
+            def floatJobID = it.toString()
+            def cmd = getCmdPrefixForJob(floatJobID)
             cmd << 'cancel'
             cmd << '-j'
-            cmd << id
+            cmd << floatJobID
             cmd << '-f'
             log.info "[float] cancel job: ${toLogStr(cmd)}"
             ret.add(cmd)
@@ -389,10 +444,14 @@ class FloatGridExecutor extends AbstractGridExecutor {
      */
     @Override
     protected Map<String, QueueStatus> getQueueStatus0(queue) {
+        return queueStatus
+    }
+
+    Map<String, QueueStatus> getQueueStatus() {
         final cmdMap = queueStatusCommands()
         floatJobs.updateStatus(cmdMap)
         log.debug "[float] collecting job status completes."
-        return queueStatus
+        return nfJobID2Status
     }
 
     protected Map<String, List<String>> queueStatusCommands() {
@@ -422,19 +481,30 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return cmd
     }
 
-    private Map<String, QueueStatus> getQueueStatus() {
-        Map<String, String> stMap = floatJobs.getJob2Status()
+    private Map<String, QueueStatus> getNfJobID2Status() {
+        Map<String, FloatJob> stMap = floatJobs.getNfJobID2job()
         return toStatusMap(stMap)
     }
 
-    private static Map<String, QueueStatus> toStatusMap(Map<String, String> stMap) {
+    private static Map<String, QueueStatus> toStatusMap(Map<String, FloatJob> stMap) {
         Map<String, QueueStatus> ret = new HashMap<>()
-        stMap.forEach { key, value ->
-            QueueStatus status = STATUS_MAP.getOrDefault(value, QueueStatus.UNKNOWN)
+        stMap.forEach { key, job ->
+            QueueStatus status = STATUS_MAP.getOrDefault(job.status, QueueStatus.UNKNOWN)
             ret[key] = status
         }
-        log.info "[float] got job status $ret"
         return ret
+    }
+
+    boolean isTaskFinished(TaskId taskId) {
+        def job = getJob(taskId)
+        if (!job) {
+            return false
+        }
+        def st = STATUS_MAP.getOrDefault(job.status, QueueStatus.UNKNOWN)
+        log.debug "[float] task id: $taskId, nf-job-id: $job.nfJobID, " +
+                "float-job-id: $job.floatJobID, " +
+                "float status: $job.status, nf status: $st"
+        return st == QueueStatus.DONE || st == QueueStatus.ERROR
     }
 
     static private Map<String, QueueStatus> STATUS_MAP = [

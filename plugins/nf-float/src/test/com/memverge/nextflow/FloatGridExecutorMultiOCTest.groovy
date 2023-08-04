@@ -41,8 +41,8 @@ class FloatGridExecutorMultiOCTest extends FloatBaseTest {
                 newTask(exec), Paths.get(script))
         def cmd2 = exec.getSubmitCommandLine(
                 newTask(exec), Paths.get(script))
-        def expected1 = submitCmd(addr: "fb")
-        def expected2 = submitCmd(addr: "fa")
+        def expected1 = submitCmd(addr: "fb", taskIndex: 1)
+        def expected2 = submitCmd(addr: "fa", taskIndex: 2)
 
         then:
         cmd1.join(' ') == expected1.join(' ')
@@ -75,8 +75,8 @@ class FloatGridExecutorMultiOCTest extends FloatBaseTest {
                 newTask(exec), Paths.get(script))
         def cmd2 = exec.getSubmitCommandLine(
                 newTask(exec), Paths.get(script))
-        def expected1 = submitCmd(addr: "fa")
-        def expected2 = submitCmd(addr: "fb")
+        def expected1 = submitCmd(addr: "fa", taskIndex: 2)
+        def expected2 = submitCmd(addr: "fb", taskIndex: 3)
 
         then:
         cmd1.join(' ') == expected1.join(' ')

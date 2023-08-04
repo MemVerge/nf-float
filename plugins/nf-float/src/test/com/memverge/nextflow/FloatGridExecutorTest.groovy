@@ -15,7 +15,6 @@
  */
 package com.memverge.nextflow
 
-
 import nextflow.executor.AbstractGridExecutor
 import nextflow.processor.TaskConfig
 import nextflow.processor.TaskId
@@ -54,6 +53,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         def jobID = 'myJobID'
 
         when:
+        //noinspection GroovyAccessibility
         def cmd = exec.killTaskCommand(jobID)
 
         then:
@@ -289,14 +289,14 @@ class FloatGridExecutorTest extends FloatBaseTest {
         final exec = newTestExecutor()
         final task = newTask(exec, new TaskConfig(
                 container: image,
-                disk: '40G',
+                disk: '41G',
         ))
 
         when:
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd.join(' ').contains('--rootVolSize 40')
+        cmd.join(' ').contains('--imageVolSize 41')
     }
 
     def "use time directive"() {
@@ -385,22 +385,23 @@ class FloatGridExecutorTest extends FloatBaseTest {
         def res = exec.parseQueueStatus(text)
 
         then:
+        //noinspection GroovyAccessibility
         def qs = AbstractGridExecutor.QueueStatus
         res.size() == count + 1
-        res['task0'] == qs.PENDING
-        res['task1'] == qs.PENDING
-        res['task2'] == qs.RUNNING
-        res['task3'] == qs.RUNNING
-        res['task4'] == qs.DONE
-        res['task5'] == qs.ERROR
-        res['task6'] == qs.ERROR
-        res['task7'] == qs.ERROR
-        res['task8'] == qs.UNKNOWN
-        res['task9'] == qs.RUNNING
-        res['task10'] == qs.RUNNING
-        res['task11'] == qs.RUNNING
-        res['task12'] == qs.RUNNING
-        res['task13'] == qs.RUNNING
+        res['tJob-0'] == qs.PENDING
+        res['tJob-1'] == qs.PENDING
+        res['tJob-2'] == qs.RUNNING
+        res['tJob-3'] == qs.RUNNING
+        res['tJob-4'] == qs.DONE
+        res['tJob-5'] == qs.ERROR
+        res['tJob-6'] == qs.ERROR
+        res['tJob-7'] == qs.ERROR
+        res['tJob-8'] == qs.UNKNOWN
+        res['tJob-9'] == qs.RUNNING
+        res['tJob-10'] == qs.RUNNING
+        res['tJob-11'] == qs.RUNNING
+        res['tJob-12'] == qs.RUNNING
+        res['tJob-13'] == qs.RUNNING
     }
 
     def "retrieve queue status command"() {

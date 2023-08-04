@@ -15,11 +15,14 @@
  */
 package com.memverge.nextflow
 
-import java.nio.file.FileSystems
 import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.executor.GridTaskHandler
 import nextflow.processor.TaskRun
+
+import java.nio.file.FileSystems
+
+import static nextflow.processor.TaskStatus.COMPLETED
 
 /**
  * Float task handler
@@ -28,8 +31,12 @@ import nextflow.processor.TaskRun
 @CompileStatic
 class FloatTaskHandler extends GridTaskHandler {
 
-    FloatTaskHandler( TaskRun task, FloatGridExecutor executor ) {
+    FloatTaskHandler(TaskRun task, FloatGridExecutor executor) {
         super(task, executor)
+    }
+
+    private FloatGridExecutor getFloatExecutor() {
+        return ((FloatGridExecutor) executor)
     }
 
     /**
@@ -39,15 +46,15 @@ class FloatTaskHandler extends GridTaskHandler {
     protected ProcessBuilder createProcessBuilder() {
 
         // -- log the submit command
-        final cli = ((FloatGridExecutor)executor).getSubmitCommandLine(this, wrapperFile)
+        final cli = floatExecutor.getSubmitCommandLine(this, wrapperFile)
         log.trace "start process ${task.name} > cli: ${cli}"
 
         // -- prepare submit process
         final builder = new ProcessBuilder()
-            .command( cli as String[] )
-            .redirectErrorStream(true)
+                .command(cli as String[])
+                .redirectErrorStream(true)
 
-        if( task.workDir.fileSystem == FileSystems.default ) {
+        if (task.workDir.fileSystem == FileSystems.default) {
             builder.directory(task.workDir.toFile())
         }
 
@@ -62,4 +69,18 @@ class FloatTaskHandler extends GridTaskHandler {
         return '#!/bin/bash\n' + fusionSubmitCli().join(' ') + '\n'
     }
 
+    @Override
+    boolean checkIfCompleted() {
+        if (floatExecutor.isTaskFinished(task.id)) {
+            def exit = readExitStatus()
+            if (exit != null) {
+                task.exitStatus = exit
+            }
+            task.stdout = outputFile
+            task.stderr = errorFile
+            status = COMPLETED
+            return true
+        }
+        return false
+    }
 }
