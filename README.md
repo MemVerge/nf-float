@@ -234,7 +234,7 @@ In additional, you may want to:
 
 When fusion is enabled, you can find similar submit command line in your `.nextflow.log`
 ```bash
-float -a 34.71.114.123 -u admin -p '***' submit
+float -a <op-center-address> -u admin -p *** submit
     --image 'wave.seqera.io/wt/dfd4c4e2d48d/biocontainers/mulled-v2-***:***-0'
     --cpu 12
     --mem 72
@@ -290,6 +290,8 @@ process sayHello {
   container 'cactus'
   cpus 2
   memory 4.GB
+  disk 50.GB
+  time '1h'
 
   output:
     stdout
@@ -309,7 +311,7 @@ The following process directives are supported for specifying task resources:
 * `conda` (only when using [Wave](https://seqera.io/wave/))
 * `container`
 * `cpus`
-* `disk` (controls the size of the root volume)
+* `disk` (controls the size of the volume of the workload, minimal size is 40 GB)
 * `machineType`
 * `memory`
 * `resourceLabels`

@@ -22,12 +22,38 @@ import nextflow.util.IniFile
 import java.nio.file.Path
 import java.nio.file.Paths
 
+
+class CmdRes {
+    CmdRes(int exit, String out) {
+        this.exit = exit
+        this.out = out
+    }
+
+    boolean getSucceeded() {
+        return exit == 0
+    }
+
+    int exit
+    String out
+}
+
 /**
  * The Global class is copied from the same class in NextFlow.
  * We copy some implementation because they are updated in different releases.
  */
 @Slf4j
 class Global {
+
+    @PackageScope
+    static CmdRes execute(List<String> cmd) {
+        final buf = new StringBuilder()
+        final process = new ProcessBuilder(cmd).redirectErrorStream(true).start()
+        final consumer = process.consumeProcessOutputStream(buf)
+        process.waitForOrKill(60_000)
+        final exit = process.exitValue(); consumer.join() // <-- make sure sync with the output consume #1045
+        final out = buf.toString()
+        return new CmdRes(exit, out)
+    }
 
     @PackageScope
     static List<String> getAwsCredentials(Map env, Map config) {

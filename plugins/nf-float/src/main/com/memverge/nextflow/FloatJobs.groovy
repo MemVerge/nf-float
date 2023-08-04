@@ -15,15 +15,15 @@
  */
 package com.memverge.nextflow
 
+import groovy.transform.WithReadLock
+import groovy.transform.WithWriteLock
 import groovy.util.logging.Slf4j
 import nextflow.file.FileHelper
 import nextflow.processor.TaskId
 import org.apache.commons.lang.RandomStringUtils
-import org.apache.commons.lang.StringUtils
 
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
-import java.nio.file.Paths
 import java.util.concurrent.ConcurrentHashMap
 
 @Slf4j
@@ -31,9 +31,9 @@ class FloatJobs {
     static final String Completed = 'Completed'
     static final String Unknown = 'Unknown'
 
-    private Map<String, String> job2status
-    private Map<String, String> job2oc
-    private Map<String, Path> task2workDir
+    private Map<String, FloatJob> nfJobID2FloatJob
+    private Map<String, String> floatJobID2oc
+    private Map<String, Path> nfJobID2workDir
     private Collection<String> ocs
     private String taskPrefix
 
@@ -41,9 +41,9 @@ class FloatJobs {
         if (!ocAddresses) {
             throw new IllegalArgumentException('op-center address is empty')
         }
-        job2status = new ConcurrentHashMap<>()
-        job2oc = new ConcurrentHashMap<>()
-        task2workDir = new ConcurrentHashMap<>()
+        nfJobID2FloatJob = new ConcurrentHashMap<>()
+        floatJobID2oc = new ConcurrentHashMap<>()
+        nfJobID2workDir = new ConcurrentHashMap<>()
         ocs = ocAddresses
         def charset = (('a'..'z') + ('0'..'9')).join('')
         taskPrefix = RandomStringUtils.random(
@@ -54,63 +54,71 @@ class FloatJobs {
         taskPrefix = prefix
     }
 
-    String getJobName(TaskId id) {
+    String getNfJobID(TaskId id) {
         return "${taskPrefix}-${id}"
     }
 
-    String getOc(String jobID) {
-        return job2oc.getOrDefault(jobID, ocs[0])
+    String getOc(String floatJobID) {
+        return floatJobID2oc.getOrDefault(floatJobID, ocs[0])
     }
 
-    Map<String, String> getJob2Status() {
-        return job2status
+    @WithReadLock
+    Map<String, FloatJob> getNfJobID2job() {
+        return nfJobID2FloatJob
     }
 
     def setWorkDir(TaskId taskID, Path dir) {
-        def name = getJobName(taskID)
-        task2workDir[name] = dir
+        def name = getNfJobID(taskID)
+        nfJobID2workDir[name] = dir
     }
 
-    Map<String, String> parseQStatus(String text) {
+    Map<String, FloatJob> parseQStatus(String text) {
         return updateOcStatus(ocs[0], text)
     }
 
+    String getJobStatus(String nfJobID) {
+        FloatJob job = nfJobID2FloatJob.get(nfJobID)
+        if (job == null) {
+            return Unknown
+        }
+        return job.status
+    }
+
+    @WithWriteLock
     def updateOcStatus(String oc, String text) {
-        def stMap = CmdResult.with(text).getQStatus()
-        stMap.each { key, value ->
-            def jobID = key as String
-            def st = value.status
-            def taskID = value.taskID
-            if (!jobID || !st) {
+        def stMap = FloatJob.parseJobMap(text)
+        stMap.each { nfJobID, job ->
+            if (!job.nfJobID || !job.status) {
                 return
             }
-            job2oc.put(jobID, oc)
-
-            def currentSt = job2status.get(jobID, Unknown)
-            def workDir = task2workDir.get(taskID)
+            floatJobID2oc.put(job.floatJobID, oc)
+            def currentSt = getJobStatus(nfJobID)
+            def workDir = nfJobID2workDir.get(job.nfJobID)
             if (workDir) {
                 // check the availability of result files
                 // call list files to update the folder cache
                 FileHelper.listDirectory(workDir)
                 def files = ['.command.out', '.command.err', '.exitcode']
-                if (currentSt != Completed && st == Completed) {
+                if (currentSt != Completed && job.status == Completed) {
                     for (filename in files) {
                         def name = workDir.resolve(filename)
                         try {
                             !FileHelper.checkIfExists(name, [checkIfExists: true])
                         } catch (NoSuchFileException ex) {
-                            log.info("[float] job $jobID completed " +
-                                    "but file not found: $ex")
+                            log.info "[float] job $nfJobID completed " +
+                                    "but file not found: ${ex.message}"
+                            job.status = currentSt
                             return
                         }
                     }
-                    log.debug("[float] found $files in: $workDir")
+                    log.debug "[float] found $files in: $workDir"
                 }
             }
-            job2status.put(jobID, st)
+
         }
-        log.debug "[float] update op-center $oc job status: $job2status"
-        return job2status
+        nfJobID2FloatJob += stMap
+        log.debug "[float] update op-center $oc job status"
+        return nfJobID2FloatJob
     }
 
     def updateStatus(Map<String, List<String>> cmdMap) {
@@ -119,24 +127,19 @@ class FloatJobs {
             def cmd = entry.value
             log.debug "[float] getting queue status > cmd: ${cmd.join(' ')}"
             try {
-                final buf = new StringBuilder()
-                final process = new ProcessBuilder(cmd).redirectErrorStream(true).start()
-                final consumer = process.consumeProcessOutputStream(buf)
-                process.waitForOrKill(60_000)
-                final exit = process.exitValue(); consumer.join() // <-- make sure sync with the output consume #1045
-                final result = buf.toString()
+                final res = Global.execute(cmd)
 
-                if (exit == 0) {
+                if (res.succeeded) {
                     log.trace "[float] queue status on $oc > cmd exit: $exit\n$result"
-                    updateOcStatus(oc, result)
+                    updateOcStatus(oc, res.out)
                 } else {
                     def m = """\
                 [float] queue status on $oc cannot be fetched
                 - cmd executed: ${cmd.join(' ')}
-                - exit status : $exit
+                - exit status : ${res.exit}
                 - output      :
                 """.stripIndent()
-                    m += result.indent('  ')
+                    m += res.out.indent('  ')
                     log.warn1(m, firstOnly: true)
                 }
             } catch (Exception e) {

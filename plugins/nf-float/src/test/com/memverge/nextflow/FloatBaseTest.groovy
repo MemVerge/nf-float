@@ -53,6 +53,7 @@ class FloatBaseTest extends BaseTest {
     def script = '/path/job.sh'
     def workDir = '/mnt/nfs/shared'
     def taskID = new TaskId(55)
+    def uuid = UUID.fromString("00000000-0000-0000-0000-000000000000")
     private AtomicInteger taskSerial = new AtomicInteger()
 
     class FloatTestExecutor extends FloatGridExecutor {
@@ -77,6 +78,9 @@ class FloatBaseTest extends BaseTest {
         exec.session = sess
         exec.session.workDir = Paths.get(workDir)
         exec.floatJobs.setTaskPrefix(tJob)
+        exec.session.runName = 'test_run'
+        //noinspection GroovyAccessibility
+        exec.session.uniqueId = uuid
         return exec
     }
 
@@ -103,6 +107,7 @@ class FloatBaseTest extends BaseTest {
     }
 
     def submitCmd(Map param = [:]) {
+        def taskIndex = param.taskIndex?:'1'
         return ['float', '-a', param.addr ?: addr,
                 '-u', user,
                 '-p', pass,
@@ -112,6 +117,9 @@ class FloatBaseTest extends BaseTest {
                 '--cpu', param.cpu ?: cpu.toString(),
                 '--mem', param.memory ?: mem.toString(),
                 '--job', script,
-                '--customTag', jobID(taskID)]
+                '--customTag', jobID(taskID),
+                '--customTag', "nextflow-io-session-id:uuid-$uuid",
+                '--customTag', "nextflow-io-task-name:foo-$taskIndex",
+                '--customTag', 'nextflow-io-run-name:test-run']
     }
 }
