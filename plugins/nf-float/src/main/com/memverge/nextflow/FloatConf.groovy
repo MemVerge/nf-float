@@ -50,6 +50,7 @@ class FloatConf {
     /** parameters for submitting the tasks */
     String vmPolicy
     String migratePolicy
+    String extraOptions
     String commonExtra
 
     /**
@@ -131,6 +132,9 @@ class FloatConf {
         if (floatNode.migratePolicy) {
             this.migratePolicy = collapseMapToString(floatNode.migratePolicy as Map)
         }
+        if (floatNode.extraOptions) {
+            this.extraOptions = floatNode.extraOptions as String
+        }
         this.commonExtra = floatNode.commonExtra
 
         if (floatNode.cpu)
@@ -151,7 +155,7 @@ class FloatConf {
         final collapsedStr = map
                 .toConfigObject()
                 .flatten()
-                .collect( (k, v) -> "${k}=${v}" )
+                .collect((k, v) -> "${k}=${v}")
                 .join(',')
         return "[${collapsedStr}]"
     }

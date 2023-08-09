@@ -308,6 +308,9 @@ class FloatGridExecutor extends AbstractGridExecutor {
         if (floatConf.migratePolicy) {
             cmd << '--migratePolicy' << floatConf.migratePolicy
         }
+        if (floatConf.extraOptions) {
+            cmd << '--extraOptions' << floatConf.extraOptions
+        }
         cmd.addAll(getExtra(task))
         log.info "[float] submit job: ${toLogStr(cmd)}"
         return cmd
