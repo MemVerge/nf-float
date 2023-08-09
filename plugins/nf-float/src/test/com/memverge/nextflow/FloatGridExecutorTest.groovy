@@ -314,6 +314,25 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ').contains('--timeLimit 86400s')
     }
 
+    def "use extra options"() {
+        given:
+        final option = """--external 'mnt[]:sm'"""
+        final exec = newTestExecutor([
+                float: [address     : addr,
+                        username    : user,
+                        password    : pass,
+                        nfs         : nfs,
+                        extraOptions: option]])
+        final task = newTask(exec)
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.contains('--extraOptions')
+        cmd.contains(option)
+    }
+
     def "use resourceLabels directive"() {
         given:
         final exec = newTestExecutor()
