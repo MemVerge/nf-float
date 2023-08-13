@@ -314,6 +314,26 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ').contains('--timeLimit 86400s')
     }
 
+    def "use timeout factor"() {
+        given:
+        final exec = newTestExecutor(
+                [float: [address    : addr,
+                         username   : user,
+                         password   : pass,
+                         nfs        : nfs,
+                         timeFactor: 1.1]])
+        final task = newTask(exec, new TaskConfig(
+                container: image,
+                time: '1h',
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains('--timeLimit 3960s')
+    }
+
     def "use extra options"() {
         given:
         final option = """--external 'mnt[]:sm'"""

@@ -53,6 +53,8 @@ class FloatConf {
     String extraOptions
     String commonExtra
 
+    float timeFactor = 1
+
     /**
      * Create a FloatConf instance and initialize the content from the
      * configuration.  The configuration should contain a "float" node.
@@ -134,6 +136,9 @@ class FloatConf {
         }
         if (floatNode.extraOptions) {
             this.extraOptions = floatNode.extraOptions as String
+        }
+        if (floatNode.timeFactor) {
+            this.timeFactor = floatNode.timeFactor as Float
         }
         this.commonExtra = floatNode.commonExtra
 
