@@ -509,7 +509,11 @@ class FloatGridExecutor extends AbstractGridExecutor {
         log.debug "[float] task id: $taskId, nf-job-id: $job.nfJobID, " +
                 "float-job-id: $job.floatJobID, " +
                 "float status: $job.status, nf status: $st"
-        return st == QueueStatus.DONE || st == QueueStatus.ERROR
+        boolean finished = st == QueueStatus.DONE || st == QueueStatus.ERROR
+        if (finished) {
+            floatJobs.refreshWorkDir(job.nfJobID)
+        }
+        return finished
     }
 
     static private Map<String, QueueStatus> STATUS_MAP = [

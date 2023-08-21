@@ -84,6 +84,14 @@ class FloatJobs {
         return job.status
     }
 
+    def refreshWorkDir(String nfJobID) {
+        def workDir = nfJobID2workDir.get(nfJobID)
+        if (workDir) {
+            // call list files to update the folder cache
+            FileHelper.listDirectory(workDir)
+        }
+    }
+
     @WithWriteLock
     def updateOcStatus(String oc, String text) {
         def stMap = FloatJob.parseJobMap(text)
@@ -96,8 +104,7 @@ class FloatJobs {
             def workDir = nfJobID2workDir.get(job.nfJobID)
             if (workDir) {
                 // check the availability of result files
-                // call list files to update the folder cache
-                FileHelper.listDirectory(workDir)
+                refreshWorkDir(job.nfJobID)
                 def files = ['.command.out', '.command.err', '.exitcode']
                 if (currentSt != Completed && job.status == Completed) {
                     for (filename in files) {
