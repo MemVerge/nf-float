@@ -71,16 +71,23 @@ class FloatTaskHandler extends GridTaskHandler {
 
     @Override
     boolean checkIfCompleted() {
-        if (floatExecutor.isTaskFinished(task.id)) {
-            def exit = readExitStatus()
-            if (exit != null) {
-                task.exitStatus = exit
+        final FloatStatus st =  floatExecutor.getJobStatus(task)
+        if (st.finished) {
+            status = COMPLETED
+            if (task.exitStatus == null) {
+                task.exitStatus = readExitStatus()
+            }
+            // both exit status and job rc code are empty
+            if (task.exitStatus == null) {
+                if (st.isError()) {
+                    task.exitStatus = Integer.MAX_VALUE
+                } else {
+                    task.exitStatus = 0
+                }
             }
             task.stdout = outputFile
             task.stderr = errorFile
-            status = COMPLETED
-            return true
         }
-        return false
+        return completed
     }
 }

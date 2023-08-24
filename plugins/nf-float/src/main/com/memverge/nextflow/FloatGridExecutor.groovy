@@ -289,6 +289,8 @@ class FloatGridExecutor extends AbstractGridExecutor {
             cmd << '--env' << "${key}=${val}".toString()
         }
         if (isFusionEnabled()) {
+            cmd << '--disableRerun'
+            cmd << '--disableMigrate'
             cmd << '--extraContainerOpts'
             cmd << '--privileged'
         }
@@ -500,43 +502,29 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return ret
     }
 
-    boolean isTaskFinished(TaskId taskId) {
-        def job = getJob(taskId)
+    FloatStatus getJobStatus(TaskRun task) {
+        def job = getJob(task.id)
         if (!job) {
-            return false
+            return FloatStatus.UNKNOWN
         }
-        def st = STATUS_MAP.getOrDefault(job.status, QueueStatus.UNKNOWN)
-        log.debug "[float] task id: $taskId, nf-job-id: $job.nfJobID, " +
-                "float-job-id: $job.floatJobID, " +
-                "float status: $job.status, nf status: $st"
-        boolean finished = st == QueueStatus.DONE || st == QueueStatus.ERROR
-        if (finished) {
+        log.debug "[float] task id: ${task.id}, nf-job-id: $job.nfJobID, " +
+                "float-job-id: $job.floatJobID, float status: $job.status"
+        if (job.finished) {
             floatJobs.refreshWorkDir(job.nfJobID)
+            task.exitStatus = job.rcCode
         }
-        return finished
+        return job.status
     }
 
-    static private Map<String, QueueStatus> STATUS_MAP = [
-            'Submitted'        : QueueStatus.PENDING,
-            'Initializing'     : QueueStatus.PENDING,
-            'Starting'         : QueueStatus.RUNNING,
-            'Executing'        : QueueStatus.RUNNING,
-            'Floating'         : QueueStatus.RUNNING,
-            'Suspended'        : QueueStatus.RUNNING,
-            'Suspending'       : QueueStatus.RUNNING,
-            'Resuming'         : QueueStatus.RUNNING,
-            'Capturing'        : QueueStatus.RUNNING,
-            'Completed'        : QueueStatus.DONE,
-            'Cancelled'        : QueueStatus.ERROR,
-            'Cancelling'       : QueueStatus.ERROR,
-            'FailToComplete'   : QueueStatus.ERROR,
-            'FailToExecute'    : QueueStatus.ERROR,
-            'CheckpointFailed' : QueueStatus.ERROR,
-            'WaitingForLicense': QueueStatus.ERROR,
-            'Timedout'         : QueueStatus.ERROR,
-            'NoAvailableHost'  : QueueStatus.ERROR,
-            'Unknown'          : QueueStatus.UNKNOWN,
-    ]
+    static private Map<FloatStatus, QueueStatus> STATUS_MAP = new HashMap<>()
+
+    static {
+        STATUS_MAP.put(FloatStatus.PENDING, QueueStatus.PENDING)
+        STATUS_MAP.put(FloatStatus.RUNNING, QueueStatus.RUNNING)
+        STATUS_MAP.put(FloatStatus.DONE, QueueStatus.DONE)
+        STATUS_MAP.put(FloatStatus.ERROR, QueueStatus.ERROR)
+        STATUS_MAP.put(FloatStatus.UNKNOWN, QueueStatus.UNKNOWN)
+    }
 
     @Override
     boolean isContainerNative() {

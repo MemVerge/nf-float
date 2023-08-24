@@ -28,9 +28,6 @@ import java.util.concurrent.ConcurrentHashMap
 
 @Slf4j
 class FloatJobs {
-    static final String Completed = 'Completed'
-    static final String Unknown = 'Unknown'
-
     private Map<String, FloatJob> nfJobID2FloatJob
     private Map<String, String> floatJobID2oc
     private Map<String, Path> nfJobID2workDir
@@ -76,10 +73,10 @@ class FloatJobs {
         return updateOcStatus(ocs[0], text)
     }
 
-    String getJobStatus(String nfJobID) {
+    FloatStatus getJobStatus(String nfJobID) {
         FloatJob job = nfJobID2FloatJob.get(nfJobID)
         if (job == null) {
-            return Unknown
+            return FloatStatus.UNKNOWN
         }
         return job.status
     }
@@ -102,11 +99,10 @@ class FloatJobs {
             floatJobID2oc.put(job.floatJobID, oc)
             def currentSt = getJobStatus(nfJobID)
             def workDir = nfJobID2workDir.get(job.nfJobID)
-            if (workDir) {
-                // check the availability of result files
+            if (workDir && job.finished) {
                 refreshWorkDir(job.nfJobID)
                 def files = ['.command.out', '.command.err', '.exitcode']
-                if (currentSt != Completed && job.status == Completed) {
+                if (!currentSt.finished && job.finished) {
                     for (filename in files) {
                         def name = workDir.resolve(filename)
                         try {
