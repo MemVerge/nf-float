@@ -45,8 +45,9 @@ class FloatJobTest extends Specification {
         then:
         job.nfJobID == ndJobID
         job.floatJobID == floatJobID
-        job.status == "Submitted"
+        job.status == FloatStatus.PENDING
         job.rc == ""
+        job.rcCode == null
     }
 
     def "parse ID when output is empty"() {
@@ -88,9 +89,10 @@ class FloatJobTest extends Specification {
 
         then:
         job.nfJobID == id
-        job.status == "Completed"
+        job.status == FloatStatus.DONE
         job.rc == "0"
-        !job.isJobRunning()
+        job.rcCode == 0
+        !job.isRunning()
     }
 
     def "check is job running"() {
@@ -111,8 +113,8 @@ class FloatJobTest extends Specification {
         final job = FloatJob.parse(out)
 
         then:
-        job.isJobRunning()
-        job.status == "Initializing"
+        job.isRunning()
+        job.status == FloatStatus.PENDING
     }
 
     def "get queue status"() {
@@ -125,6 +127,7 @@ class FloatJobTest extends Specification {
                 "user": "admin",                                                                                                         
                 "imageID": "docker.io/memverge/cactus:latest",                                                                           
                 "status": "FailToExecute",
+                "rc": "2",
                 "customTags": {
                     "nf-job-id": "job-1",
                     "a": "apple"
@@ -150,12 +153,14 @@ class FloatJobTest extends Specification {
         def st2 = stMap['job-3']
 
         then:
-        st1.status == 'FailToExecute'
+        st1.status == FloatStatus.ERROR
         st1.nfJobID == 'job-1'
         st1.floatJobID == 'QPj8nsNWfLam6VQWbeGnp'
-        st2.status == 'Executing'
+        st1.rcCode == 2
+        st2.status == FloatStatus.RUNNING
         st2.nfJobID == 'job-3'
         st2.floatJobID == 'u5x3sSLe0p3OznGavmYu3'
+        st2.rcCode == null
     }
 
     def "get queue empty"() {
