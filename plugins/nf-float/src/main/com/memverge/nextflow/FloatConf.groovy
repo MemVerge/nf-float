@@ -21,6 +21,8 @@ import nextflow.exception.AbortOperationException
 import nextflow.io.BucketParser
 import org.apache.commons.lang.StringUtils
 
+import java.nio.file.Path
+
 /**
  * @author Cedric Zhuang <cedric.zhuang@memverge.com>
  */
@@ -52,6 +54,8 @@ class FloatConf {
     String migratePolicy
     String extraOptions
     String commonExtra
+
+    Path floatBin
 
     float timeFactor = 1
 
@@ -196,8 +200,9 @@ class FloatConf {
         if (StringUtils.length(address) == 0) {
             address = addresses[0]
         }
+        def bin = FloatBin.get(address)
         List<String> ret = [
-                "float",
+                bin.toString(),
                 "-a",
                 address,
                 "-u",

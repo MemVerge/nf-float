@@ -80,7 +80,7 @@ class FloatTaskHandler extends GridTaskHandler {
             // both exit status and job rc code are empty
             if (task.exitStatus == null) {
                 if (st.isError()) {
-                    task.exitStatus = Integer.MAX_VALUE
+                    task.exitStatus = 1
                 } else {
                     task.exitStatus = 0
                 }

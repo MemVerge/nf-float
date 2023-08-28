@@ -18,6 +18,8 @@ package com.memverge.nextflow
 import nextflow.exception.AbortOperationException
 
 class FloatConfTest extends BaseTest {
+    private def bin = FloatBin.get("").toString()
+
     def "one op-center in the address"() {
         given:
         def conf = [
@@ -68,7 +70,7 @@ class FloatConfTest extends BaseTest {
         def fConf = FloatConf.getConf(conf)
 
         then:
-        fConf.getCli() == "float -a 1.2.3.4 " +
+        fConf.getCli() == "${bin} -a 1.2.3.4 " +
                 "-u admin -p password"
 
     }
@@ -84,7 +86,7 @@ class FloatConfTest extends BaseTest {
         def fConf = FloatConf.getConf(conf)
 
         then:
-        fConf.getCli("1.1.1.1") == "float -a 1.1.1.1 " +
+        fConf.getCli("1.1.1.1") == "${bin} -a 1.1.1.1 " +
                 "-u admin -p password"
     }
 
