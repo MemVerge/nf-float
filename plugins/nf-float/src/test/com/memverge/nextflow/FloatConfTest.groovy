@@ -210,4 +210,85 @@ class FloatConfTest extends BaseTest {
         [cpu:[lowerBoundRatio:30],mem:[upperBoundRatio:90]] | '[cpu.lowerBoundRatio=30,mem.upperBoundRatio=90]'
         [cpu:[step:50]]                                     | '[cpu.step=50]'
     }
+
+    def "update s3 credentials"() {
+        given:
+        setEnv('AWS_ACCESS_KEY_ID', 'x')
+        setEnv('AWS_SECRET_ACCESS_KEY', 'y')
+        def fConf = FloatConf.getConf(
+                [float: [nfs: 's3://1.2.3.4/work/dir:/local']])
+
+        when:
+        def workDir = new URI('file:///local/here')
+        def volume = fConf.getWorkDirVol(workDir)
+
+        then:
+        volume == '[accessKey=x,mode=rw,secret=y]s3://1.2.3.4/work/dir:/local'
+    }
+}
+
+
+class DataVolumeTest extends BaseTest {
+    def "parse nfs volume" (){
+        given:
+        def nfs = "nfs://1.2.3.4/my/dir:/mnt/point"
+
+        when:
+        def vol = new DataVolume(nfs)
+
+        then:
+        vol.scheme == "nfs"
+        vol.toString() == nfs
+    }
+
+    def "parse s3 without credentials" () {
+        given:
+        def s3 = "[mode=rw]s3://1.2.3.4/my/dir:/mnt/point"
+
+        when:
+        def vol = new DataVolume(s3)
+
+        then:
+        vol.scheme == "s3"
+        vol.toString() == s3
+    }
+
+    def "existing s3 credentials" () {
+        given:
+        def s3 = "[accessKey=a,mode=rw,secret=s]s3://1.2.3.4/my/dir:/mnt/point"
+
+        when:
+        def vol = new DataVolume(s3)
+        vol.setS3Credentials("x", "y")
+
+        then:
+        vol.scheme == "s3"
+        vol.toString() == s3
+    }
+
+    def "update s3 credentials" () {
+        given:
+        def s3 = "[secret=s]s3://1.2.3.4/my/dir:/mnt/point"
+
+        when:
+        def vol = new DataVolume(s3)
+        vol.setS3Credentials("x", "y")
+
+        then:
+        vol.scheme == "s3"
+        vol.toString() == "[accessKey=x,mode=rw,secret=y]s3://1.2.3.4/my/dir:/mnt/point"
+    }
+
+    def "update s3 credentials" () {
+        given:
+        def s3 = "[mode=rw,secret=s]s3://1.2.3.4/my/dir:/mnt/point"
+
+        when:
+        def vol = new DataVolume(s3)
+        vol.setS3Credentials(null, null)
+
+        then:
+        vol.scheme == "s3"
+        vol.toString() == "[mode=rw,secret=s]s3://1.2.3.4/my/dir:/mnt/point"
+    }
 }

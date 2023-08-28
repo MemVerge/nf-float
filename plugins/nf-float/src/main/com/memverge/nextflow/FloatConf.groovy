@@ -21,8 +21,6 @@ import nextflow.exception.AbortOperationException
 import nextflow.io.BucketParser
 import org.apache.commons.lang.StringUtils
 
-import java.nio.file.Path
-
 /**
  * @author Cedric Zhuang <cedric.zhuang@memverge.com>
  */
@@ -55,8 +53,6 @@ class FloatConf {
     String extraOptions
     String commonExtra
 
-    Path floatBin
-
     float timeFactor = 1
 
     /**
@@ -72,8 +68,8 @@ class FloatConf {
         }
         FloatConf ret = new FloatConf()
 
-        ret.initFloatConf(config.float as Map)
         ret.initAwsConf(config)
+        ret.initFloatConf(config.float as Map)
 
         return ret
     }
@@ -115,6 +111,12 @@ class FloatConf {
         return "$nfs:${workDir.path}"
     }
 
+    private String parseNfs(String nfsOption) {
+        def vol = new DataVolume(nfsOption)
+        vol.setS3Credentials(s3accessKey, s3secretKey)
+        return vol.toString()
+    }
+
     private def initFloatConf(Map floatNode) {
         if (!floatNode) {
             return
@@ -130,7 +132,7 @@ class FloatConf {
                     .collect { it.trim() }
                     .findAll { it.size() > 0 }
         }
-        this.nfs = floatNode.nfs
+        this.nfs = parseNfs(floatNode.nfs as String)
 
         if (floatNode.vmPolicy) {
             this.vmPolicy = collapseMapToString(floatNode.vmPolicy as Map)
@@ -215,5 +217,66 @@ class FloatConf {
 
     String getCli(String address = "") {
         return getCliPrefix(address).join(" ")
+    }
+}
+
+class DataVolume {
+    private Map<String, String> options
+    private URI uri
+
+    DataVolume(String s) {
+        options = [:]
+        if (!s) {
+            uri = new URI("")
+            return
+        }
+        def opStart = s.indexOf("[")
+        def opEnd = s.indexOf("]")
+        if (opStart == 0 && opEnd != -1) {
+            def opStr = s.substring(1, opEnd)
+            for (String op : opStr.split(",")) {
+                def tokens = op.split("=")
+                if (tokens.size() < 2) {
+                    continue
+                }
+                options[tokens[0]] = tokens[1]
+            }
+            uri = new URI(s.substring(opEnd + 1))
+        } else {
+            uri = new URI(s)
+        }
+    }
+
+    def setS3Credentials(String key, String secret) {
+        if (scheme != "s3") {
+            return
+        }
+        final accessKey = "accessKey"
+        final secretKey = "secret"
+        if (!options.containsKey(accessKey) || !options.containsKey(secretKey)) {
+            if (key != null) {
+                options[accessKey] = key
+            }
+            if (secret != null) {
+                options[secretKey] = secret
+            }
+        }
+        if (!options.containsKey('mode')) {
+            options['mode'] = "rw"
+        }
+    }
+
+    def getScheme() {
+        return uri.scheme
+    }
+
+    String toString() {
+        List<String> ops = []
+        options.forEach { k, v -> ops.add("$k=$v") }
+        if (ops.size() == 0) {
+            return uri.toString()
+        }
+        Collections.sort(ops)
+        return "[${ops.join(",")}]${uri}"
     }
 }
