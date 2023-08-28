@@ -19,19 +19,12 @@ import groovy.transform.PackageScope
 import groovy.util.logging.Slf4j
 import nextflow.SysEnv
 import nextflow.util.IniFile
-import org.eclipse.jgit.internal.storage.file.Pack
 
-import javax.net.ssl.HostnameVerifier
-import javax.net.ssl.HttpsURLConnection
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLSession
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509TrustManager
+import javax.net.ssl.*
 import java.nio.file.Path
 import java.nio.file.Paths
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
-
 
 class CmdRes {
     CmdRes(int exit, String out) {
@@ -79,10 +72,10 @@ class Global {
         }
 
         // Install the all-trusting trust manager
-        SSLContext sc = SSLContext.getInstance("SSL");
+        SSLContext sc = SSLContext.getInstance("SSL")
         sc.init(null, trustAllCerts, new SecureRandom())
         def dftFactory = HttpsURLConnection.getDefaultSSLSocketFactory()
-        HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+        HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory())
 
         // Create all-trusting host name verifier
         HostnameVerifier allHostsValid = new HostnameVerifier() {
@@ -91,7 +84,7 @@ class Global {
 
         // Install the all-trusting host verifier
         def dftVerifier = HttpsURLConnection.getDefaultHostnameVerifier()
-        HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid);
+        HttpsURLConnection.setDefaultHostnameVerifier(allHostsValid)
 
         url.openConnection().with { conn ->
             filename.toFile().withOutputStream { out ->

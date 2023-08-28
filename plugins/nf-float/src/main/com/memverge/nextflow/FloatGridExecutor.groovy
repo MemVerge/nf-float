@@ -270,8 +270,6 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
         validate(task)
 
-        final jobName = floatJobs.getNfJobID(task.id)
-        final String tag = "${FloatConf.NF_JOB_ID}:${jobName}"
         final container = task.getContainer()
         if (!container) {
             throw new AbortOperationException("container is empty. " +
@@ -395,6 +393,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
                 - exit status : $ret
                 - output      :
                 """.stripIndent()
+                log.warn m
             }
             return ret
         }.collect()
