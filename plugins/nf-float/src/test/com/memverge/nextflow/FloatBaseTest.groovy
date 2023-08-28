@@ -28,16 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class BaseTest extends Specification {
     def setEnv(String key, String value) {
-        try {
-            def env = System.getenv()
-            def cl = env.getClass()
-            def field = cl.getDeclaredField("m")
-            field.setAccessible(true)
-            def writableEnv = (Map<String, String>) field.get(env)
-            writableEnv.put(key, value)
-        } catch (Exception e) {
-            throw new IllegalStateException("Failed to set environment variable", e)
-        }
+        Global.setEnv(key, value)
     }
 }
 
@@ -54,6 +45,7 @@ class FloatBaseTest extends BaseTest {
     def workDir = '/mnt/nfs/shared'
     def taskID = new TaskId(55)
     def uuid = UUID.fromString("00000000-0000-0000-0000-000000000000")
+    def bin = FloatBin.get("").toString()
     private AtomicInteger taskSerial = new AtomicInteger()
 
     class FloatTestExecutor extends FloatGridExecutor {
@@ -108,7 +100,7 @@ class FloatBaseTest extends BaseTest {
 
     def submitCmd(Map param = [:]) {
         def taskIndex = param.taskIndex?:'1'
-        return ['float', '-a', param.addr ?: addr,
+        return [bin, '-a', param.addr ?: addr,
                 '-u', user,
                 '-p', pass,
                 'submit',

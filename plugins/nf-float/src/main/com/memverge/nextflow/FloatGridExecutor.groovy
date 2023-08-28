@@ -387,9 +387,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     void killTask(def floatJobID) {
         def cmdList = killTaskCommands(floatJobID)
         cmdList.parallelStream().map { cmd ->
-            def proc = new ProcessBuilder(cmd).redirectErrorStream(true).start()
-            proc.waitForOrKill(10_000)
-            def ret = proc.exitValue()
+            def ret = Global.execute(cmd).exit
             if (ret != 0) {
                 def m = """\
                 Unable to kill pending jobs
@@ -397,8 +395,6 @@ class FloatGridExecutor extends AbstractGridExecutor {
                 - exit status : $ret
                 - output      :
                 """.stripIndent()
-                m += proc.text.indent('  ')
-                log.debug(m)
             }
             return ret
         }.collect()

@@ -57,7 +57,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         def cmd = exec.killTaskCommand(jobID)
 
         then:
-        cmd.join(' ') == ['float', '-a', addr,
+        cmd.join(' ') == [bin, '-a', addr,
                           '-u', user,
                           '-p', pass,
                           'cancel', '-j', jobID].join(' ')
@@ -70,7 +70,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         when:
         final commands = exec.killTaskCommands(['a', 'b'])
         def expected = { jobID ->
-            return ['float', '-a', addr,
+            return [bin, '-a', addr,
                     '-u', user,
                     '-p', pass,
                     'cancel', '-j', jobID, '-f'].join(' ')
@@ -451,7 +451,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         def cmd = exec.queueStatusCommand(null)
 
         then:
-        cmd == ['float', '-a', addr,
+        cmd == [bin, '-a', addr,
                 '-u', user,
                 '-p', pass,
                 'list', '--format', 'json']

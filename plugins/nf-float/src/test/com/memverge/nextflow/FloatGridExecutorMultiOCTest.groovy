@@ -59,9 +59,9 @@ class FloatGridExecutorMultiOCTest extends FloatBaseTest {
         def cmd2 = cmdMap['fb']
 
         then:
-        cmd1.join(' ') == "float -a fa -u ${user} -p ${pass} " +
+        cmd1.join(' ') == "${bin} -a fa -u ${user} -p ${pass} " +
                 "list --format json"
-        cmd2.join(' ') == "float -a fb -u ${user} -p ${pass} " +
+        cmd2.join(' ') == "${bin} -a fb -u ${user} -p ${pass} " +
                 "list --format json"
     }
 
