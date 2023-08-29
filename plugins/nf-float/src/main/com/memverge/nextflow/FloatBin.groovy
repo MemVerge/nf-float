@@ -13,11 +13,12 @@ class FloatBin {
     private static final binName = 'float'
 
     static Path get(String opCenterAddr) {
-        if (!opCenterAddr) {
-            return Paths.get(binName)
-        }
         def ret = getFloatBinPath()
         if (ret == null) {
+            if (!opCenterAddr) {
+                // no where to retrieve the binary
+                return Paths.get(binName)
+            }
             final URL src = getDownloadUrl(opCenterAddr)
             final Path pluginsDir = Global.getPluginsDir()
             ret = pluginsDir.resolve(binName)
@@ -45,9 +46,8 @@ class FloatBin {
 
     private static Path getFloatBinPath() {
         final sep = Pattern.quote(File.pathSeparator)
-        def paths = Arrays.asList(System.getenv("PATH").split(sep))
-        paths = new ArrayList<String>(paths)
-        paths.add(Global.getPluginsDir().toString())
+        def paths = [Global.getPluginsDir().toString()]
+        paths.addAll(Arrays.asList(System.getenv("PATH").split(sep)))
         for (String path : paths) {
             def floatPath = Paths.get(path).resolve(binName)
             if (Files.exists(floatPath)) {
