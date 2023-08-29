@@ -60,6 +60,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     protected void register() {
         super.register()
         uploadBinDir()
+        syncFloatBin()
     }
 
     @Override
@@ -111,6 +112,14 @@ class FloatGridExecutor extends AbstractGridExecutor {
                     binDir.resolve("bin"),
                     StandardCopyOption.REPLACE_EXISTING)
         }
+    }
+
+    private void syncFloatBin() {
+        final oc = floatJobs.getOc("")
+        def cmd = floatConf.getCliPrefix(oc)
+        cmd << "release" << "sync"
+        def res = Global.execute(cmd)
+        log.info "[float] sync the float binary, $res"
     }
 
     private static String getMemory(TaskRun task) {

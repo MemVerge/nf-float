@@ -36,6 +36,10 @@ class CmdRes {
         return exit == 0
     }
 
+    String toString() {
+        return "exit code: ${exit}, out: ${out}"
+    }
+
     int exit
     String out
 }
