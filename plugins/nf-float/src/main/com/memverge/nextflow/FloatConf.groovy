@@ -37,6 +37,7 @@ class FloatConf {
     static final String NF_RUN_NAME = 'nextflow-io-run-name'
     static final String NF_SESSION_ID = 'nextflow-io-session-id'
     static final String NF_TASK_NAME = 'nextflow-io-task-name'
+    static final String NF_INPUT_SIZE = 'nextflow-io-input-size'
 
     /** credentials for op center */
     String username
@@ -54,6 +55,8 @@ class FloatConf {
     String commonExtra
 
     float timeFactor = 1
+    float cpuFactor = 1
+    float memoryFactory = 1
 
     /**
      * Create a FloatConf instance and initialize the content from the
@@ -146,6 +149,12 @@ class FloatConf {
         if (floatNode.timeFactor) {
             this.timeFactor = floatNode.timeFactor as Float
         }
+        if (floatNode.cpuFactor) {
+            this.cpuFactor = floatNode.cpuFactor as Float
+        }
+        if (floatNode.memoryFactor) {
+            this.memoryFactory = floatNode.memoryFactor as Float
+        }
         this.commonExtra = floatNode.commonExtra
 
         if (floatNode.cpu)
@@ -162,7 +171,7 @@ class FloatConf {
             warnDeprecated("float.container", "process.container")
     }
 
-    private String collapseMapToString(Map map) {
+    private static String collapseMapToString(Map map) {
         final collapsedStr = map
                 .toConfigObject()
                 .flatten()

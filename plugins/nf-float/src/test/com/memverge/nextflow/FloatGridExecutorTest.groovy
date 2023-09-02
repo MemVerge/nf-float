@@ -334,6 +334,106 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ').contains('--timeLimit 3960s')
     }
 
+    def "use on-demand for retry"() {
+        given:
+        final exec = newTestExecutor(
+                [float: [address    : addr,
+                         username   : user,
+                         password   : pass,
+                         nfs        : nfs]])
+        final task = newTask(exec, new TaskConfig(
+                container: image,
+                time: '1h',
+                attempt: 2,
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains('onDemand=true')
+    }
+
+    def "use cpu factor"() {
+        given:
+        final exec = newTestExecutor(
+                [float: [address    : addr,
+                         username   : user,
+                         password   : pass,
+                         nfs        : nfs,
+                         cpuFactor: 1.5]])
+        final task = newTask(exec, new TaskConfig(
+                container: image,
+                cpus: 2,
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains('--cpu 3')
+    }
+
+    def "use invalid cpu"() {
+        given:
+        final exec = newTestExecutor(
+                [float: [address    : addr,
+                         username   : user,
+                         password   : pass,
+                         nfs        : nfs,
+                         cpuFactor: 0.2]])
+        final task = newTask(exec, new TaskConfig(
+                container: image,
+                cpus: 1,
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains('--cpu 1')
+    }
+
+    def "use memory factor"() {
+        given:
+        final exec = newTestExecutor(
+                [float: [address    : addr,
+                         username   : user,
+                         password   : pass,
+                         nfs        : nfs,
+                         memoryFactor: 0.5]])
+        final task = newTask(exec, new TaskConfig(
+                container: image,
+                memory: "8 GB",
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains('--mem 4')
+    }
+
+    def "use invalid memory"() {
+        given:
+        final exec = newTestExecutor(
+                [float: [address    : addr,
+                         username   : user,
+                         password   : pass,
+                         nfs        : nfs,
+                         memoryFactor: 0.5]])
+        final task = newTask(exec, new TaskConfig(
+                container: image,
+                memory: 8,
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains('--mem 1')
+    }
+
     def "use extra options"() {
         given:
         final option = """--external 'mnt[]:sm'"""
