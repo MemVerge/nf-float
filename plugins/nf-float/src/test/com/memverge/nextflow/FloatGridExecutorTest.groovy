@@ -535,7 +535,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         res['tJob-5'] == qs.ERROR
         res['tJob-6'] == qs.ERROR
         res['tJob-7'] == qs.ERROR
-        res['tJob-8'] == qs.UNKNOWN
+        res['tJob-8'] == qs.DONE
         res['tJob-9'] == qs.RUNNING
         res['tJob-10'] == qs.RUNNING
         res['tJob-11'] == qs.RUNNING
