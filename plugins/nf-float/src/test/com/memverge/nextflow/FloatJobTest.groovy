@@ -148,9 +148,9 @@ class FloatJobTest extends Specification {
         ]"""
 
         when:
-        def stMap = FloatJob.parseJobMap(out)
-        def st1 = stMap['job-1']
-        def st2 = stMap['job-3']
+        def jobs = FloatJob.parseJobMap(out)
+        def st1 = jobs.get(0)
+        def st2 = jobs.get(1)
 
         then:
         st1.status == FloatStatus.ERROR
@@ -168,9 +168,9 @@ class FloatJobTest extends Specification {
         final out = """No jobs"""
 
         when:
-        def stMap = FloatJob.parseJobMap(out)
+        def jobs = FloatJob.parseJobMap(out)
 
         then:
-        stMap.size() == 0
+        jobs.size() == 0
     }
 }

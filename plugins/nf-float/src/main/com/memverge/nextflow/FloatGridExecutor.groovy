@@ -167,6 +167,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
             if (res.succeeded) {
                 job = FloatJob.parse(res.out)
+                job = floatJobs.updateJob(job)
             }
         } catch (Exception e) {
             log.warn "[float] failed to retrieve job status $nfJobID, float: ${job.floatJobID}", e
@@ -532,13 +533,14 @@ class FloatGridExecutor extends AbstractGridExecutor {
         if (!job) {
             return FloatStatus.UNKNOWN
         }
-        log.debug "[float] task id: ${task.id}, nf-job-id: $job.nfJobID, " +
+        log.info "[float] task id: ${task.id}, nf-job-id: $job.nfJobID, " +
                 "float-job-id: $job.floatJobID, float status: $job.status"
-        if (job.finished) {
-            floatJobs.refreshWorkDir(job.nfJobID)
-            task.exitStatus = job.rcCode
-        }
         return job.status
+    }
+
+    Integer getJobRC(TaskId id) {
+        def job = getJob(id)
+        return job.rcCode
     }
 
     static private Map<FloatStatus, QueueStatus> STATUS_MAP = new HashMap<>()

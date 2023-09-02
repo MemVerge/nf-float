@@ -74,16 +74,18 @@ class FloatTaskHandler extends GridTaskHandler {
         final FloatStatus st =  floatExecutor.getJobStatus(task)
         if (st.finished) {
             status = COMPLETED
+            task.exitStatus = readExitStatus()
             if (task.exitStatus == null) {
-                task.exitStatus = readExitStatus()
+                task.exitStatus = floatExecutor.getJobRC(task.id)
             }
-            // both exit status and job rc code are empty
             if (task.exitStatus == null) {
                 if (st.isError()) {
                     task.exitStatus = 1
                 } else {
                     task.exitStatus = 0
                 }
+                log.info "both .exitcode and rc are empty for ${task.id}," +
+                        "set exit to ${task.exitStatus}"
             }
             task.stdout = outputFile
             task.stderr = errorFile

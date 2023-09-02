@@ -126,8 +126,8 @@ class FloatJob {
         return status ? status.isFinished() : false
     }
 
-    static Map<String, FloatJob> parseJobMap(String input) {
-        Map<String, FloatJob> ret = new HashMap<>()
+    static List<FloatJob> parseJobMap(String input) {
+        List<FloatJob> ret = []
         try {
             def parser = new JsonSlurper()
             def obj = parser.parseText(input)
@@ -142,7 +142,7 @@ class FloatJob {
                     job.floatJobID = floatJobID
                     job.status = FloatStatus.of(status)
                     job.rc = i.rc as String
-                    ret[nfJobID] = job
+                    ret.add(job)
                 }
             }
         } catch (Exception e) {

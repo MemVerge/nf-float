@@ -15,14 +15,12 @@
  */
 package com.memverge.nextflow
 
-import groovy.transform.WithReadLock
-import groovy.transform.WithWriteLock
+
 import groovy.util.logging.Slf4j
 import nextflow.file.FileHelper
 import nextflow.processor.TaskId
 import org.apache.commons.lang.RandomStringUtils
 
-import java.nio.file.NoSuchFileException
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
@@ -59,7 +57,6 @@ class FloatJobs {
         return floatJobID2oc.getOrDefault(floatJobID, ocs[0])
     }
 
-    @WithReadLock
     Map<String, FloatJob> getNfJobID2job() {
         return nfJobID2FloatJob
     }
@@ -73,12 +70,18 @@ class FloatJobs {
         return updateOcStatus(ocs[0], text)
     }
 
-    FloatStatus getJobStatus(String nfJobID) {
-        FloatJob job = nfJobID2FloatJob.get(nfJobID)
-        if (job == null) {
-            return FloatStatus.UNKNOWN
+    FloatJob updateJob(FloatJob job) {
+        FloatJob existingJob = nfJobID2job.get(job.nfJobID)
+        if (existingJob != null && existingJob.finished) {
+            // job already finished, no need to update
+            job = existingJob
+        } else {
+            nfJobID2job.put(job.nfJobID, job)
         }
-        return job.status
+        if (job.finished) {
+            refreshWorkDir(job.nfJobID)
+        }
+        return job
     }
 
     def refreshWorkDir(String nfJobID) {
@@ -89,37 +92,15 @@ class FloatJobs {
         }
     }
 
-    @WithWriteLock
     def updateOcStatus(String oc, String text) {
-        def stMap = FloatJob.parseJobMap(text)
-        stMap.each { nfJobID, job ->
+        def jobs = FloatJob.parseJobMap(text)
+        jobs.each {job ->
             if (!job.nfJobID || !job.status) {
                 return
             }
             floatJobID2oc.put(job.floatJobID, oc)
-            def currentSt = getJobStatus(nfJobID)
-            def workDir = nfJobID2workDir.get(job.nfJobID)
-            if (workDir && job.finished) {
-                refreshWorkDir(job.nfJobID)
-                def files = ['.command.out', '.command.err', '.exitcode']
-                if (!currentSt.finished && job.finished) {
-                    for (filename in files) {
-                        def name = workDir.resolve(filename)
-                        try {
-                            !FileHelper.checkIfExists(name, [checkIfExists: true])
-                        } catch (NoSuchFileException ex) {
-                            log.info "[float] job $nfJobID completed " +
-                                    "but file not found: ${ex.message}"
-                            job.status = currentSt
-                            return
-                        }
-                    }
-                    log.debug "[float] found $files in: $workDir"
-                }
-            }
-
+            updateJob(job)
         }
-        nfJobID2FloatJob += stMap
         log.debug "[float] update op-center $oc job status"
         return nfJobID2FloatJob
     }
