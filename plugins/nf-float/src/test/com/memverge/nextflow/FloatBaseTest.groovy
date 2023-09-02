@@ -110,8 +110,9 @@ class FloatBaseTest extends BaseTest {
                 '--mem', param.memory ?: mem.toString(),
                 '--job', script,
                 '--customTag', jobID(taskID),
-                '--customTag', "nextflow-io-session-id:uuid-$uuid",
-                '--customTag', "nextflow-io-task-name:foo-$taskIndex",
-                '--customTag', 'nextflow-io-run-name:test-run']
+                '--customTag', "${FloatConf.NF_SESSION_ID}:uuid-$uuid",
+                '--customTag', "${FloatConf.NF_TASK_NAME}:foo-$taskIndex",
+                '--customTag', "${FloatConf.NF_INPUT_SIZE}:0",
+                '--customTag', "${FloatConf.NF_RUN_NAME}:test-run"]
     }
 }

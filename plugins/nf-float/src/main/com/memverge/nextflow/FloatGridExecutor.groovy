@@ -122,14 +122,17 @@ class FloatGridExecutor extends AbstractGridExecutor {
         log.info "[float] sync the float binary, $res"
     }
 
-    private static String getMemory(TaskRun task) {
+    private String getMemory(TaskRun task) {
         final mem = task.config.getMemory()
-        final giga = mem?.toGiga()
+        Long giga = mem?.toGiga()
         if (!giga) {
             log.debug "memory $mem is too small.  " +
                     "will use default $DFT_MEM_GB"
+            giga = DFT_MEM_GB
         }
-        return giga ? giga.toString() : DFT_MEM_GB
+        giga = (long) ((float) (giga) * floatConf.memoryFactory)
+        giga = Math.max(giga, DFT_MEM_GB)
+        return giga.toString()
     }
 
     private Collection<String> getExtra(TaskRun task) {
@@ -236,6 +239,14 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return ret
     }
 
+    private static long getInputFileSize(TaskRun task) {
+        long ret = 0
+        for (def src : task.getInputFilesMap().values()) {
+            ret += src.size()
+        }
+        return ret
+    }
+
     private Map<String, String> getEnv(FloatTaskHandler handler) {
         return isFusionEnabled()
                 ? handler.fusionLauncher().fusionEnv()
@@ -247,6 +258,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         result[FloatConf.NF_JOB_ID] = floatJobs.getNfJobID(task.id)
         result[FloatConf.NF_SESSION_ID] = "uuid-${session.uniqueId}".toString()
         result[FloatConf.NF_TASK_NAME] = task.name
+        result[FloatConf.NF_INPUT_SIZE] = getInputFileSize(task).toString()
         if (task.processor.name) {
             result[FloatConf.NF_PROCESS_NAME] = task.processor.name
         }
@@ -274,6 +286,12 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return value
     }
 
+    private Integer getCpu(TaskRun task) {
+        int cpu = task.config.getCpus()
+        int ret = (int) (((float) cpu) * floatConf.cpuFactor)
+        return Math.max(ret, 1)
+    }
+
     List<String> getSubmitCommandLine(FloatTaskHandler handler, Path scriptFile) {
         final task = handler.task
 
@@ -289,7 +307,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         cmd << 'submit'
         getMountVols(task).forEach { cmd << '--dataVolume' << it }
         cmd << '--image' << task.getContainer()
-        cmd << '--cpu' << task.config.getCpus().toString()
+        cmd << '--cpu' << getCpu(task).toString()
         cmd << '--mem' << getMemory(task)
         cmd << '--job' << getScriptFilePath(handler, scriptFile)
         getEnv(handler).each { key, val ->
@@ -321,6 +339,9 @@ class FloatGridExecutor extends AbstractGridExecutor {
         }
         if (floatConf.extraOptions) {
             cmd << '--extraOptions' << floatConf.extraOptions
+        }
+        if (task.config.getAttempt() > 1) {
+            cmd << '--vmPolicy' << '[onDemand=true]'
         }
         cmd.addAll(getExtra(task))
         log.info "[float] submit job: ${toLogStr(cmd)}"
