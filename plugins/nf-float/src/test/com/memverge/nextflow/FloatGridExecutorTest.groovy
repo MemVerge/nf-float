@@ -150,6 +150,29 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(" ") == expected.join(" ")
     }
 
+    def "quoted arguments in extra"() {
+        given:
+        final exec = newTestExecutor(
+                [float: [address    : addr,
+                         username   : user,
+                         password   : pass,
+                         nfs        : nfs,
+                         commonExtra: '--dataVolume  [opts="-o allow_other"]s3://1.2.3.4:/a:/a  --rootVolSize 10']]
+        )
+        final task = newTask(exec)
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+        final expected = submitCmd() + [
+                '--dataVolume',
+                '[opts="-o allow_other"]s3://1.2.3.4:/a:/a',
+                '--rootVolSize',
+                '10']
+
+        then:
+        cmd == expected
+    }
+
     def "add specific extras"() {
         given:
         final exec = newTestExecutor()
@@ -317,10 +340,10 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use timeout factor"() {
         given:
         final exec = newTestExecutor(
-                [float: [address    : addr,
-                         username   : user,
-                         password   : pass,
-                         nfs        : nfs,
+                [float: [address   : addr,
+                         username  : user,
+                         password  : pass,
+                         nfs       : nfs,
                          timeFactor: 1.1]])
         final task = newTask(exec, new TaskConfig(
                 container: image,
@@ -337,10 +360,10 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use on-demand for retry"() {
         given:
         final exec = newTestExecutor(
-                [float: [address    : addr,
-                         username   : user,
-                         password   : pass,
-                         nfs        : nfs]])
+                [float: [address : addr,
+                         username: user,
+                         password: pass,
+                         nfs     : nfs]])
         final task = newTask(exec, new TaskConfig(
                 container: image,
                 time: '1h',
@@ -357,10 +380,10 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use cpu factor"() {
         given:
         final exec = newTestExecutor(
-                [float: [address    : addr,
-                         username   : user,
-                         password   : pass,
-                         nfs        : nfs,
+                [float: [address  : addr,
+                         username : user,
+                         password : pass,
+                         nfs      : nfs,
                          cpuFactor: 1.5]])
         final task = newTask(exec, new TaskConfig(
                 container: image,
@@ -377,10 +400,10 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use invalid cpu"() {
         given:
         final exec = newTestExecutor(
-                [float: [address    : addr,
-                         username   : user,
-                         password   : pass,
-                         nfs        : nfs,
+                [float: [address  : addr,
+                         username : user,
+                         password : pass,
+                         nfs      : nfs,
                          cpuFactor: 0.2]])
         final task = newTask(exec, new TaskConfig(
                 container: image,
@@ -397,10 +420,10 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use memory factor"() {
         given:
         final exec = newTestExecutor(
-                [float: [address    : addr,
-                         username   : user,
-                         password   : pass,
-                         nfs        : nfs,
+                [float: [address     : addr,
+                         username    : user,
+                         password    : pass,
+                         nfs         : nfs,
                          memoryFactor: 0.5]])
         final task = newTask(exec, new TaskConfig(
                 container: image,
@@ -417,10 +440,10 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use invalid memory"() {
         given:
         final exec = newTestExecutor(
-                [float: [address    : addr,
-                         username   : user,
-                         password   : pass,
-                         nfs        : nfs,
+                [float: [address     : addr,
+                         username    : user,
+                         password    : pass,
+                         nfs         : nfs,
                          memoryFactor: 0.5]])
         final task = newTask(exec, new TaskConfig(
                 container: image,
