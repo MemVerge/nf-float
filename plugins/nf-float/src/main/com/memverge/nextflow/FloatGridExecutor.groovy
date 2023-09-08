@@ -28,6 +28,8 @@ import nextflow.util.ServiceName
 
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 import java.util.stream.Collectors
 
 /**
@@ -142,8 +144,31 @@ class FloatGridExecutor extends AbstractGridExecutor {
         if (common) {
             extra = common.trim() + " " + extra.trim()
         }
-        def ret = extra.split('\\s+')
+        def ret = splitWithQuotes(extra)
         return ret.findAll { it.length() > 0 }
+    }
+
+    private static List<String> splitWithQuotes(String input) {
+        List<String> ret = new ArrayList<String>()
+        int start = 0
+        boolean  inQuotes = false
+        for (int i = 0; i < input.size(); i++) {
+            if (input[i] == '"') {
+                inQuotes = !inQuotes
+            }
+            if ((input[i] == '\t' || input[i] == ' ') && !inQuotes) {
+                String token = input.substring(start, i).trim()
+                if (token.size() > 0) {
+                    ret.add(token)
+                }
+                start = i
+            }
+        }
+        String token = input.substring(start).trim()
+        if (token.size() > 0) {
+            ret.add(token)
+        }
+        return ret
     }
 
     private List<String> getCmdPrefixForJob(String floatJobID) {
