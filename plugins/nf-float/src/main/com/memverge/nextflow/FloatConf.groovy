@@ -37,7 +37,7 @@ class FloatConf {
     static final String NF_RUN_NAME = 'nextflow-io-run-name'
     static final String NF_SESSION_ID = 'nextflow-io-session-id'
     static final String NF_TASK_NAME = 'nextflow-io-task-name'
-    static final String NF_INPUT_SIZE = 'nextflow-io-input-size'
+    static final String NF_INPUT_SIZE = 'input-size'
 
     /** credentials for op center */
     String username
@@ -195,12 +195,6 @@ class FloatConf {
     }
 
     void validate() {
-        if (!username) {
-            throw new AbortOperationException("missing MMCE username")
-        }
-        if (!password) {
-            throw new AbortOperationException("missing MMCE password")
-        }
         if (addresses.size() == 0) {
             throw new AbortOperationException("missing MMCE OC address")
         }
@@ -215,12 +209,13 @@ class FloatConf {
         List<String> ret = [
                 bin.toString(),
                 "-a",
-                address,
-                "-u",
-                username,
-                "-p",
-                password
-        ]
+                address]
+        if (username && password) {
+            ret.addAll(["-u",
+                        username,
+                        "-p",
+                        password])
+        }
         return ret
     }
 

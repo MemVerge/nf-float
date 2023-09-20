@@ -328,11 +328,13 @@ class FloatGridExecutor extends AbstractGridExecutor {
             throw new AbortOperationException("container is empty. " +
                     "you can specify a default container image " +
                     "with `process.container`")
+        } else {
+            log.info("got container image of the task ${container}")
         }
         def cmd = getSubmitCmdPrefix(task.index)
         cmd << 'submit'
         getMountVols(task).forEach { cmd << '--dataVolume' << it }
-        cmd << '--image' << task.getContainer()
+        cmd << '--image' << container
         cmd << '--cpu' << getCpu(task).toString()
         cmd << '--mem' << getMemory(task)
         cmd << '--job' << getScriptFilePath(handler, scriptFile)
