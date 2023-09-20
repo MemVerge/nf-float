@@ -90,10 +90,10 @@ class FloatConfTest extends BaseTest {
                 "-u admin -p password"
     }
 
-    def "credentials are required"() {
+    def "address is required"() {
         given:
         def conf = [
-                float: [address: '1.2.3.4']]
+                float: [username: 'admin']]
 
         when:
         def fConf = FloatConf.getConf(conf)
@@ -101,6 +101,18 @@ class FloatConfTest extends BaseTest {
 
         then:
         thrown AbortOperationException
+    }
+
+    def "credentials are optional"() {
+        given:
+        def conf = [float:[address:"1.2.3.4"]]
+
+        when:
+        def fConf = FloatConf.getConf(conf)
+        fConf.validate()
+
+        then:
+        fConf.getCliPrefix().join(' ').endsWith('float -a 1.2.3.4')
     }
 
     def "get s3 data volume"() {

@@ -23,6 +23,7 @@ class FloatBin {
             final Path pluginsDir = Global.getPluginsDir()
             ret = pluginsDir.resolve(binName)
             try {
+                log.info "try downloading $src to $ret"
                 Global.download(src, ret)
                 ret.setExecutable(true)
             } catch (Exception ex) {
@@ -51,6 +52,7 @@ class FloatBin {
         for (String path : paths) {
             def floatPath = Paths.get(path).resolve(binName)
             if (Files.exists(floatPath)) {
+                log.info "found float binary in $path"
                 return floatPath
             }
         }

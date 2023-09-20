@@ -98,7 +98,7 @@ class Global {
                 }
             }
         }
-        log.info "download ${url} to ${filename}"
+        log.info "downloaded ${url} to ${filename}"
         // restore the factory and verifier
         HttpsURLConnection.setDefaultSSLSocketFactory(dftFactory)
         HttpsURLConnection.setDefaultHostnameVerifier(dftVerifier)
