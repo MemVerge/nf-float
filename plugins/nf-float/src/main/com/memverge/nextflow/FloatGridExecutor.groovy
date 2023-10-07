@@ -323,7 +323,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
         validate(task)
 
-        final container = task.getContainer()
+        final container = task.getContainer().strip(" \t\'\"")
         if (!container) {
             throw new AbortOperationException("container is empty. " +
                     "you can specify a default container image " +

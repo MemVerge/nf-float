@@ -272,6 +272,23 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ') == submitCmd().join(' ')
     }
 
+    def "trim space and quotes in image"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, new TaskConfig(
+                cpus: cpu,
+                memory: "$mem G",
+                container: "\"' $image\t'\"",
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+        final expected = submitCmd()
+
+        then:
+        cmd.join(' ') == expected.join(' ')
+    }
+
     def "parse data volume"() {
         given:
         final exec = newTestExecutor()
