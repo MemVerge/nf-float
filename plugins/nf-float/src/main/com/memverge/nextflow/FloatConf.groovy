@@ -58,6 +58,9 @@ class FloatConf {
     float cpuFactor = 1
     float memoryFactory = 1
 
+    float maxCpuFactor = 2
+    float maxMemoryFactor = 2
+
     /**
      * Create a FloatConf instance and initialize the content from the
      * configuration.  The configuration should contain a "float" node.
@@ -151,6 +154,12 @@ class FloatConf {
         }
         if (floatNode.cpuFactor) {
             this.cpuFactor = floatNode.cpuFactor as Float
+        }
+        if (floatNode.maxCpuFactor) {
+            this.maxCpuFactor = floatNode.maxCpuFactor as Float
+        }
+        if (floatNode.maxMemoryFactor) {
+            this.maxMemoryFactor = floatNode.maxMemoryFactor as Float
         }
         if (floatNode.memoryFactor) {
             this.memoryFactory = floatNode.memoryFactor as Float

@@ -99,6 +99,24 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ') == expected.join(' ')
     }
 
+    def "max cpu and memory factor"() {
+        given:
+        final dataVolume = nfs + ':/data'
+        final exec = newTestExecutor([float: [
+                address : addr,
+                maxCpuFactor: 3,
+                maxMemoryFactor: 2.51,
+                nfs     : dataVolume]])
+        final task = newTask(exec)
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+        final expected = submitCmd(nfs: dataVolume)
+
+        then:
+        cmd.join(' ').contains("--cpu 5:15 --mem 10:25")
+    }
+
     def "add default local mount point"() {
         given:
         final exec = newTestExecutor()

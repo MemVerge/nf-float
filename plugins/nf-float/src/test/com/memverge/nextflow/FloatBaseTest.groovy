@@ -100,14 +100,16 @@ class FloatBaseTest extends BaseTest {
 
     def submitCmd(Map param = [:]) {
         def taskIndex = param.taskIndex?:'1'
+        def realCpu = param.cpu ?: cpu
+        def realMem = param.memory ?: mem
         return [bin, '-a', param.addr ?: addr,
                 '-u', user,
                 '-p', pass,
                 'submit',
                 '--dataVolume', param.nfs ?: nfs + ':' + workDir,
                 '--image', param.image ?: image,
-                '--cpu', param.cpu ?: cpu.toString(),
-                '--mem', param.memory ?: mem.toString(),
+                '--cpu', realCpu + ':' + realCpu * 2,
+                '--mem', realMem + ':' + realMem * 2,
                 '--job', script,
                 '--customTag', jobID(taskID),
                 '--customTag', "${FloatConf.NF_SESSION_ID}:uuid-$uuid",

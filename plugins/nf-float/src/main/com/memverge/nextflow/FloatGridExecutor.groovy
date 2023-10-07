@@ -28,8 +28,6 @@ import nextflow.util.ServiceName
 
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import java.util.regex.Matcher
-import java.util.regex.Pattern
 import java.util.stream.Collectors
 
 /**
@@ -124,7 +122,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         log.info "[float] sync the float binary, $res"
     }
 
-    private String getMemory(TaskRun task) {
+    private int getMemory(TaskRun task) {
         final mem = task.config.getMemory()
         Long giga = mem?.toGiga()
         if (!giga) {
@@ -134,7 +132,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         }
         giga = (long) ((float) (giga) * floatConf.memoryFactory)
         giga = Math.max(giga, DFT_MEM_GB)
-        return giga.toString()
+        return giga
     }
 
     private Collection<String> getExtra(TaskRun task) {
@@ -151,7 +149,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     private static List<String> splitWithQuotes(String input) {
         List<String> ret = new ArrayList<String>()
         int start = 0
-        boolean  inQuotes = false
+        boolean inQuotes = false
         for (int i = 0; i < input.size(); i++) {
             if (input[i] == '"') {
                 inQuotes = !inQuotes
@@ -335,8 +333,13 @@ class FloatGridExecutor extends AbstractGridExecutor {
         cmd << 'submit'
         getMountVols(task).forEach { cmd << '--dataVolume' << it }
         cmd << '--image' << container
-        cmd << '--cpu' << getCpu(task).toString()
-        cmd << '--mem' << getMemory(task)
+
+        int cpu = getCpu(task)
+        int maxCpu = (floatConf.maxCpuFactor * cpu.doubleValue()).intValue()
+        cmd << '--cpu' << "${cpu}:${maxCpu}".toString()
+        int memGiga = getMemory(task)
+        int maxMemGiga = (floatConf.maxMemoryFactor * memGiga.doubleValue()).intValue()
+        cmd << '--mem' << "${memGiga}:${maxMemGiga}".toString()
         cmd << '--job' << getScriptFilePath(handler, scriptFile)
         getEnv(handler).each { key, val ->
             cmd << '--env' << "${key}=${val}".toString()
