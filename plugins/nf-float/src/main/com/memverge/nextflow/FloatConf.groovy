@@ -37,7 +37,10 @@ class FloatConf {
     static final String NF_RUN_NAME = 'nextflow-io-run-name'
     static final String NF_SESSION_ID = 'nextflow-io-session-id'
     static final String NF_TASK_NAME = 'nextflow-io-task-name'
-    static final String NF_INPUT_SIZE = 'input-size'
+    static final String FLOAT_INPUT_SIZE = 'input-size'
+    static final String FLOAT_JOB_KIND = 'job-kind'
+    static final int DFT_MAX_CPU_FACTOR = 4
+    static final int DFT_MAX_MEM_FACTOR = 4
 
     /** credentials for op center */
     String username
@@ -58,8 +61,8 @@ class FloatConf {
     float cpuFactor = 1
     float memoryFactory = 1
 
-    float maxCpuFactor = 2
-    float maxMemoryFactor = 2
+    float maxCpuFactor = DFT_MAX_CPU_FACTOR
+    float maxMemoryFactor = DFT_MAX_MEM_FACTOR
 
     /**
      * Create a FloatConf instance and initialize the content from the

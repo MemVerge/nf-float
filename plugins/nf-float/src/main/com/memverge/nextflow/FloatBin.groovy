@@ -12,7 +12,20 @@ import java.util.regex.Pattern
 class FloatBin {
     private static final binName = 'float'
 
-    static Path get(String opCenterAddr) {
+    /**
+     * This function checks if the float binary is available in the plugin
+     * directory or the $PATH environment variable.
+     *
+     * If it's not available, download the proper version from the op-center.
+     * If it's available, use the sync command to update.
+     *
+     * @param opCenterAddr address of the op-center
+     * @param targetDir the directory to check or download binary, default to
+     *        the plugin directory if set to null.
+     *
+     * @return location of the float binary
+     */
+    static Path get(String opCenterAddr, Path targetDir = null) {
         def ret = getFloatBinPath()
         if (ret == null) {
             if (!opCenterAddr) {
@@ -20,8 +33,10 @@ class FloatBin {
                 return Paths.get(binName)
             }
             final URL src = getDownloadUrl(opCenterAddr)
-            final Path pluginsDir = Global.getPluginsDir()
-            ret = pluginsDir.resolve(binName)
+            if (targetDir == null) {
+                targetDir = Global.getPluginsDir()
+            }
+            ret = targetDir.resolve(binName)
             try {
                 log.info "try downloading $src to $ret"
                 Global.download(src, ret)

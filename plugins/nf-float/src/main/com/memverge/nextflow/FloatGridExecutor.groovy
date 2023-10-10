@@ -282,9 +282,12 @@ class FloatGridExecutor extends AbstractGridExecutor {
         result[FloatConf.NF_JOB_ID] = floatJobs.getNfJobID(task.id)
         result[FloatConf.NF_SESSION_ID] = "uuid-${session.uniqueId}".toString()
         result[FloatConf.NF_TASK_NAME] = task.name
-        result[FloatConf.NF_INPUT_SIZE] = getInputFileSize(task).toString()
-        if (task.processor.name) {
-            result[FloatConf.NF_PROCESS_NAME] = task.processor.name
+        result[FloatConf.FLOAT_INPUT_SIZE] = getInputFileSize(task).toString()
+
+        final processName = task.processor.name
+        if (processName) {
+            result[FloatConf.NF_PROCESS_NAME] = processName
+            result[FloatConf.FLOAT_JOB_KIND] = getJobKind(processName)
         }
         if (session.runName) {
             result[FloatConf.NF_RUN_NAME] = session.runName
@@ -293,6 +296,14 @@ class FloatGridExecutor extends AbstractGridExecutor {
         if (resourceLabels)
             result.putAll(resourceLabels)
         return result
+    }
+
+    private String getJobKind(String processName) {
+        def fsPrefix = workDir.getScheme()
+        if (isFusionEnabled()) {
+            fsPrefix += 'fu'
+        }
+        return fsPrefix + '-' + processName
     }
 
     @Override

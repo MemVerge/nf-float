@@ -108,13 +108,13 @@ class FloatBaseTest extends BaseTest {
                 'submit',
                 '--dataVolume', param.nfs ?: nfs + ':' + workDir,
                 '--image', param.image ?: image,
-                '--cpu', realCpu + ':' + realCpu * 2,
-                '--mem', realMem + ':' + realMem * 2,
+                '--cpu', realCpu + ':' + realCpu * FloatConf.DFT_MAX_CPU_FACTOR,
+                '--mem', realMem + ':' + realMem * FloatConf.DFT_MAX_MEM_FACTOR,
                 '--job', script,
                 '--customTag', jobID(taskID),
                 '--customTag', "${FloatConf.NF_SESSION_ID}:uuid-$uuid",
                 '--customTag', "${FloatConf.NF_TASK_NAME}:foo-$taskIndex",
-                '--customTag', "${FloatConf.NF_INPUT_SIZE}:0",
+                '--customTag', "${FloatConf.FLOAT_INPUT_SIZE}:0",
                 '--customTag', "${FloatConf.NF_RUN_NAME}:test-run"]
     }
 }
