@@ -76,6 +76,7 @@ class FloatJobs {
             // job already finished, no need to update
             job = existingJob
         } else {
+            log.info "[float] put job ${job.nfJobID} into map"
             nfJobID2job.put(job.nfJobID, job)
         }
         if (job.finished) {
@@ -101,7 +102,7 @@ class FloatJobs {
             floatJobID2oc.put(job.floatJobID, oc)
             updateJob(job)
         }
-        log.debug "[float] update op-center $oc job status"
+        log.info "[float] update op-center $oc job status"
         return nfJobID2FloatJob
     }
 

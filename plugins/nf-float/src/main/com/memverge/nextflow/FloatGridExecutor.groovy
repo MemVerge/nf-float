@@ -289,6 +289,12 @@ class FloatGridExecutor extends AbstractGridExecutor {
             result[FloatConf.NF_PROCESS_NAME] = processName
             result[FloatConf.FLOAT_JOB_KIND] = getJobKind(processName)
         }
+        if (session.workflowMetadata) {
+            final projName = session.workflowMetadata.projectName
+            if (projName) {
+                result[FloatConf.NF_PROJECT_NAME] = projName
+            }
+        }
         if (session.runName) {
             result[FloatConf.NF_RUN_NAME] = session.runName
         }
@@ -314,7 +320,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     private static String toTag(String value) {
         final sizeLimit = 63
         value = value.replaceAll("[_\\s]", "-")
-        value = value.replaceAll("[^a-zA-Z0-9-]", "")
+        value = value.replaceAll("[^a-zA-Z0-9-]", "-")
         if (value.size() > sizeLimit) {
             value = value.substring(0, sizeLimit)
         }
