@@ -34,6 +34,7 @@ class FloatConf {
     static final String ADDR_SEP = ","
     static final String NF_JOB_ID = "nf-job-id"
     static final String NF_PROCESS_NAME = 'nextflow-io-process-name'
+    static final String NF_PROJECT_NAME = 'nextflow-io-project-name'
     static final String NF_RUN_NAME = 'nextflow-io-run-name'
     static final String NF_SESSION_ID = 'nextflow-io-session-id'
     static final String NF_TASK_NAME = 'nextflow-io-task-name'

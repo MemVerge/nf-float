@@ -113,7 +113,7 @@ class FloatBaseTest extends BaseTest {
                 '--job', script,
                 '--customTag', jobID(taskID),
                 '--customTag', "${FloatConf.NF_SESSION_ID}:uuid-$uuid",
-                '--customTag', "${FloatConf.NF_TASK_NAME}:foo-$taskIndex",
+                '--customTag', "${FloatConf.NF_TASK_NAME}:foo--$taskIndex-",
                 '--customTag', "${FloatConf.FLOAT_INPUT_SIZE}:0",
                 '--customTag', "${FloatConf.NF_RUN_NAME}:test-run"]
     }
