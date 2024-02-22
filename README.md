@@ -123,7 +123,8 @@ Available `float` config options:
 * `vmPolicy`: the VM creation policy, specified as a map.  Refer to the CLI usage
               for the list of available options.
 * `timeFactor`: a float number.  default to 1.  An extra factor to multiply based 
-  on the time supplied by the task.  Use it to resolve some task timeouts.
+  on the time supplied by the task.  Add time factor to enlarge the default timeout of the task.  
+  Because WaveRider may take extra time for job migration.
 * `maxCpuFactor`: a float number.  default to 4.  The maximum CPU cores of the instance is set
   to `maxCpuFactor` * `cpus` of the task.
 * `maxMemoryFactor`: a float number.  default to 4.  The maximum memory of the instance is set
@@ -187,6 +188,7 @@ float {
     address = 'op.center.address'
     username = secrets.MMC_USERNAME
     password = secrets.MMC_PASSWORD
+    timeFactor = 2
 }
 
 aws {
