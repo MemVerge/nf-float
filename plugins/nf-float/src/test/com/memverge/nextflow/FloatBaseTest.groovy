@@ -111,6 +111,7 @@ class FloatBaseTest extends BaseTest {
                 '--cpu', realCpu + ':' + realCpu * FloatConf.DFT_MAX_CPU_FACTOR,
                 '--mem', realMem + ':' + realMem * FloatConf.DFT_MAX_MEM_FACTOR,
                 '--job', script,
+                '--disableRerun',
                 '--customTag', jobID(taskID),
                 '--customTag', "${FloatConf.NF_SESSION_ID}:uuid-$uuid",
                 '--customTag', "${FloatConf.NF_TASK_NAME}:foo--$taskIndex-",

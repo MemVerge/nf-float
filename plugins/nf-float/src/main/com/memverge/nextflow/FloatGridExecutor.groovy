@@ -361,8 +361,8 @@ class FloatGridExecutor extends AbstractGridExecutor {
         getEnv(handler).each { key, val ->
             cmd << '--env' << "${key}=${val}".toString()
         }
+        cmd << '--disableRerun'
         if (isFusionEnabled()) {
-            cmd << '--disableRerun'
             cmd << '--disableMigrate'
             cmd << '--extraContainerOpts'
             cmd << '--privileged'

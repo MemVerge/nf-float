@@ -53,9 +53,20 @@ Just make sure you have proper internet access.
 
 ```groovy
 plugins {
+    id 'nf-float'
+}
+```
+
+This will download the latest version of the plugin.
+
+If you need a specific version, you can specify the version number like this:
+
+```groovy
+plugins {
     id 'nf-float@0.4.1'
 }
 ```
+
 
 #### Manual Install
 
@@ -66,9 +77,9 @@ Go to the folder where you just install the `nextflow` command line.
 Let's call this folder the Nextflow home directory.
 Create the float plugin folder with:
 ```bash
-mkdir -p .nextflow/plugins/nf-float-0.4.1
+mkdir -p .nextflow/plugins/nf-float-<version>
 ```
-where `0.4.1` is the version of the float plugin.  This version number should 
+where `<version>` is the version of the float plugin, such as `0.4.1`.  This version number should 
 align with the version in of your plugin and the property in your configuration
 file. (check the configuration section)
 
@@ -76,7 +87,7 @@ Retrieve your plugin zip file and unzip it in this folder.
 If everything goes right, you should be able to see two sub-folders:
 
 ```bash
-$ ll .nextflow/plugins/nf-float-0.4.1/
+$ ll .nextflow/plugins/nf-float-<version>/
 total 48
 drwxr-xr-x 4 ec2-user ec2-user    51 Jan  5 07:17 classes
 drwxr-xr-x 2 ec2-user ec2-user    25 Jan  5 07:17 META-INF
@@ -89,7 +100,7 @@ file with the command line option `-c`.  Here is a sample of the configuration.
 
 ```groovy
 plugins {
-    id 'nf-float@0.4.1'
+    id 'nf-float'
 }
 
 workDir = '/mnt/memverge/shared'
@@ -172,7 +183,7 @@ Unknown config secret 'MMC_USERNAME'
 To enable s3 as work directory, user need to set work directory to a s3 bucket.
 ```groovy
 plugins {
-    id 'nf-float@0.4.1'
+    id 'nf-float'
 }
 
 workDir = 's3://bucket/path'
