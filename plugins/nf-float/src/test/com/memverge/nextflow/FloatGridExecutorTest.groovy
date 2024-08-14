@@ -41,10 +41,21 @@ class FloatGridExecutorTest extends FloatBaseTest {
                 policy: spotOnly
                 retryLimit: 3
                 retryInterval: 10m0s
+            customTags:
+                input-size: "123456789"
+                job-kind: file-NFCORE
+                nextflow-io-process-name: NFCORE-PROCESS-NAME
+                nextflow-io-project-name: project-name
+                nextflow-io-run-name: agitated-nightingale
+                nextflow-io-session-id: uuid-a-b-c-d-e
+                nextflow-io-task-name: NFCORE-a-b-c-sorted-bam
+                nf-job-id: tJob-60
         """.stripIndent().trim()
 
         then:
         exec.parseJobId(out) == id
+        def job = exec.getJob(new TaskId(60))
+        job.status == FloatStatus.PENDING
     }
 
     def "kill command"() {

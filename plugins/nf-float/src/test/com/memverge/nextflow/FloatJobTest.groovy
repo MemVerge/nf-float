@@ -58,6 +58,16 @@ class FloatJobTest extends Specification {
         job.nfJobID == ""
     }
 
+    def "parse ID when not found"() {
+        when:
+        final job = FloatJob.parse("Error: Invalid argument, invalid job ID (code: 1003)")
+
+        then:
+        job.nfJobID == ""
+        job.floatJobID == ""
+        job.status == FloatStatus.UNKNOWN
+    }
+
     def "show job detail"() {
         given:
         final id = 'myJob-0'
