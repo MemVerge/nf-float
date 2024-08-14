@@ -49,7 +49,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return FloatConf.getConf(session.config)
     }
 
-    FloatJobs getFloatJobs() {
+    synchronized FloatJobs getFloatJobs() {
         if (_floatJobs == null) {
             _floatJobs = new FloatJobs(floatConf.addresses)
         }
@@ -178,6 +178,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         def nfJobID = floatJobs.getNfJobID(taskId)
         def job = floatJobs.nfJobID2job.get(nfJobID)
         if (job == null) {
+            log.warn "[float] job not found for nextflow task $taskId"
             return null
         }
         def cmd = getCmdPrefixForJob(job.floatJobID)
@@ -191,9 +192,13 @@ class FloatGridExecutor extends AbstractGridExecutor {
             if (res.succeeded) {
                 job = FloatJob.parse(res.out)
                 job = floatJobs.updateJob(job)
+            } else {
+                log.warn "[float] failed to retrieve job status $nfJobID, " +
+                        "float: ${job.floatJobID}, details: ${res.out}"
             }
         } catch (Exception e) {
-            log.warn "[float] failed to retrieve job status $nfJobID, float: ${job.floatJobID}", e
+            log.warn "[float] failed to retrieve job status $nfJobID, " +
+                    "float: ${job.floatJobID}", e
         }
         return job
     }
@@ -450,7 +455,9 @@ class FloatGridExecutor extends AbstractGridExecutor {
      */
     @Override
     def parseJobId(String text) {
-        return FloatJob.parse(text).floatJobID
+        def job = FloatJob.parse(text)
+        floatJobs.updateJob(job)
+        return job.floatJobID
     }
 
     /**
@@ -578,6 +585,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     FloatStatus getJobStatus(TaskRun task) {
         def job = getJob(task.id)
         if (!job) {
+            log.info "[float] task status unknown, job not found for ${task.id}"
             return FloatStatus.UNKNOWN
         }
         log.info "[float] task id: ${task.id}, nf-job-id: $job.nfJobID, " +

@@ -374,8 +374,18 @@ configure a local Nextflow build with the following steps:
     ```bash
     ./gradlew compileGroovy
     ```
+   
+4. Run unittest of the package:
+    ```bash
+    ./gradlew check
+    ```
 
-4. Run Nextflow with the plugin, using `./launch.sh` as a drop-in replacement for the `nextflow` command, and adding the option `-plugins nf-hello` to load the plugin:
+5. Packaging:
+    ```bash
+    ./gradlew assemble
+    ```
+
+6. Run Nextflow with the plugin, using `./launch.sh` as a drop-in replacement for the `nextflow` command, and adding the option `-plugins nf-float` to load the plugin:
     ```bash
     ./launch.sh run samples/hello.nf -c conf/float-rt.conf -plugins nf-float
     ```
