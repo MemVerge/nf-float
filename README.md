@@ -217,9 +217,9 @@ the `nfs` option automatically.
 The plugin retrieves the s3 credentials from Nextflow.
 Nextflow looks for AWS credentials in the following order:
 * the `nextflow.config` file in the pipeline execution directory
-* the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
-* the environment variables `AWS_ACCESS_KEY` and `AWS_SECRET_KEY`
-* the environment variables `AWS_TOKEN` and `AWS_SESSION_TOKEN`
+* read key from `AWS_ACCESS_KEY_ID` or `AWS_ACCESS_KEY_ID`
+* read secret from `AWS_SECRET_ACCESS_KEY` or `AWS_SECRET_KEY`
+* read token from `AWS_TOKEN` or `AWS_SESSION_TOKEN` if applicable
 * the default profile in the AWS credentials file located at `~/.aws/credentials`
 * the default profile in the AWS client configuration file located at `~/.aws/config`
 * the temporary AWS credentials provided by an IAM instance role. See IAM Roles documentation for details.
