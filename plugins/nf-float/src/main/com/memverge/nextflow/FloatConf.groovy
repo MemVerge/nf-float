@@ -19,7 +19,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.exception.AbortOperationException
 import nextflow.io.BucketParser
-import org.apache.commons.lang.StringUtils
+import nextflow.processor.TaskId
 
 /**
  * @author Cedric Zhuang <cedric.zhuang@memverge.com>
@@ -194,7 +194,7 @@ class FloatConf {
     }
 
     private static void warnDeprecated(String deprecated, String replacement) {
-        log.warn "[float] config option `$deprecated` " +
+        log.warn "[FLOAT] config option `$deprecated` " +
                 "is no longer supported, " +
                 "use `$replacement` instead"
     }
@@ -213,11 +213,13 @@ class FloatConf {
         }
     }
 
-    List<String> getCliPrefix(String address = "") {
-        validate()
-        if (StringUtils.length(address) == 0) {
-            address = addresses[0]
+    List<String> getCliPrefix(TaskId id) {
+        if (id == null) {
+            id = new TaskId(0)
         }
+        final address = addresses[id.intValue() % (addresses.size())]
+        validate()
+
         def bin = FloatBin.get(address)
         List<String> ret = [
                 bin.toString(),
@@ -232,8 +234,8 @@ class FloatConf {
         return ret
     }
 
-    String getCli(String address = "") {
-        return getCliPrefix(address).join(" ")
+    String getCli(TaskId id) {
+        return getCliPrefix(id).join(" ")
     }
 }
 

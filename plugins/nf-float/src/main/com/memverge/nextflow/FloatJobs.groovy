@@ -15,11 +15,9 @@
  */
 package com.memverge.nextflow
 
-
 import groovy.util.logging.Slf4j
 import nextflow.file.FileHelper
 import nextflow.processor.TaskId
-import org.apache.commons.lang.RandomStringUtils
 
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
@@ -27,22 +25,14 @@ import java.util.concurrent.ConcurrentHashMap
 @Slf4j
 class FloatJobs {
     private Map<String, FloatJob> nfJobID2FloatJob
-    private Map<String, String> floatJobID2oc
     private Map<String, Path> nfJobID2workDir
-    private Collection<String> ocs
     private String taskPrefix
 
-    FloatJobs(Collection<String> ocAddresses) {
-        if (!ocAddresses) {
-            throw new IllegalArgumentException('op-center address is empty')
-        }
+    FloatJobs(String runName) {
         nfJobID2FloatJob = new ConcurrentHashMap<>()
-        floatJobID2oc = new ConcurrentHashMap<>()
         nfJobID2workDir = new ConcurrentHashMap<>()
-        ocs = ocAddresses
-        def charset = (('a'..'z') + ('0'..'9')).join('')
-        taskPrefix = RandomStringUtils.random(
-                6, charset.toCharArray())
+        taskPrefix = runName
+        log.info "[FLOAT] FloatJobs created with task prefix ${taskPrefix}"
     }
 
     def setTaskPrefix(String prefix) {
@@ -53,36 +43,55 @@ class FloatJobs {
         return "${taskPrefix}-${id}"
     }
 
-    String getOc(String floatJobID) {
-        return floatJobID2oc.getOrDefault(floatJobID, ocs[0])
+    TaskId getTaskID(String floatJobID) {
+        // go through the all float jobs to find the task id
+        for (FloatJob job : nfJobID2FloatJob.values()) {
+            if (job.floatJobID == floatJobID) {
+                // extract the task id from the nfJobID
+                def taskId = job.nfJobID.substring(taskPrefix.length() + 1)
+                return new TaskId(Integer.parseInt(taskId))
+            }
+        }
+        return null
     }
 
-    Map<String, FloatJob> getNfJobID2job() {
-        return nfJobID2FloatJob
+    FloatJob getJobByJobID(String jobID) {
+        return nfJobID2FloatJob.get(jobID)
     }
 
-    def setWorkDir(TaskId taskID, Path dir) {
-        def name = getNfJobID(taskID)
+    FloatJob getJob(TaskId id) {
+        def nfJobID = getNfJobID(id)
+        return getJobByJobID(nfJobID)
+    }
+
+    def setWorkDir(TaskId id, Path dir) {
+        def name = getNfJobID(id)
         nfJobID2workDir[name] = dir
     }
 
-    Map<String, FloatJob> parseQStatus(String text) {
-        return updateOcStatus(ocs[0], text)
-    }
-
     FloatJob updateJob(FloatJob job) {
-        FloatJob existingJob = nfJobID2job.get(job.nfJobID)
-        if (existingJob != null && existingJob.finished) {
-            // job already finished, no need to update
-            job = existingJob
+        if (job.nfJobID == null || job.nfJobID.size() == 0) {
+            log.error "[FLOAT] job nf Job ID is null or empty for job ${job.floatJobID}"
         } else {
-            log.info "[float] put job ${job.nfJobID} into map"
-            nfJobID2job.put(job.nfJobID, job)
-        }
-        if (job.finished) {
-            refreshWorkDir(job.nfJobID)
+            FloatJob existingJob = nfJobID2FloatJob.get(job.nfJobID)
+            if (existingJob != null && existingJob.finished) {
+                log.info "[FLOAT] job ${job.nfJobID} already finished, no need to update"
+                job = existingJob
+            } else {
+                if (existingJob == null) {
+                    log.info "[FLOAT] put job ${job.nfJobID} in status tracking map"
+                }
+                nfJobID2FloatJob.put(job.nfJobID, job)
+            }
+            if (job.finished) {
+                refreshWorkDir(job.nfJobID)
+            }
         }
         return job
+    }
+
+    Map<String, FloatJob> getNfJobID2Job() {
+        return nfJobID2FloatJob
     }
 
     def refreshWorkDir(String nfJobID) {
@@ -91,46 +100,5 @@ class FloatJobs {
             // call list files to update the folder cache
             FileHelper.listDirectory(workDir)
         }
-    }
-
-    def updateOcStatus(String oc, String text) {
-        def jobs = FloatJob.parseJobMap(text)
-        jobs.each {job ->
-            if (!job.nfJobID || !job.status) {
-                return
-            }
-            floatJobID2oc.put(job.floatJobID, oc)
-            updateJob(job)
-        }
-        log.info "[float] update op-center $oc job status"
-        return nfJobID2FloatJob
-    }
-
-    def updateStatus(Map<String, List<String>> cmdMap) {
-        cmdMap.entrySet().parallelStream().map { entry ->
-            def oc = entry.key
-            def cmd = entry.value
-            log.debug "[float] getting queue status > cmd: ${cmd.join(' ')}"
-            try {
-                final res = Global.execute(cmd)
-
-                if (res.succeeded) {
-                    log.trace "[float] queue status on $oc > cmd exit: $exit\n$result"
-                    updateOcStatus(oc, res.out)
-                } else {
-                    def m = """\
-                [float] queue status on $oc cannot be fetched
-                - cmd executed: ${cmd.join(' ')}
-                - exit status : ${res.exit}
-                - output      :
-                """.stripIndent()
-                    m += res.out.indent('  ')
-                    log.warn1(m, firstOnly: true)
-                }
-            } catch (Exception e) {
-                log.warn "[float] failed to retrieve queue status -- See the log file for details", e
-            }
-        }.collect()
-        log.debug "[float] collecting job status completes."
     }
 }

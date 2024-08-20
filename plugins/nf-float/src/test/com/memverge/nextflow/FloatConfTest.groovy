@@ -16,6 +16,7 @@
 package com.memverge.nextflow
 
 import nextflow.exception.AbortOperationException
+import nextflow.processor.TaskId
 
 class FloatConfTest extends BaseTest {
     private def bin = FloatBin.get("").toString()
@@ -70,7 +71,7 @@ class FloatConfTest extends BaseTest {
         def fConf = FloatConf.getConf(conf)
 
         then:
-        fConf.getCli() == "${bin} -a 1.2.3.4 " +
+        fConf.getCli(null) == "${bin} -a 1.2.3.4 " +
                 "-u admin -p password"
 
     }
@@ -86,7 +87,7 @@ class FloatConfTest extends BaseTest {
         def fConf = FloatConf.getConf(conf)
 
         then:
-        fConf.getCli("1.1.1.1") == "${bin} -a 1.1.1.1 " +
+        fConf.getCli(new TaskId(1)) == "${bin} -a 2.3.4.5 " +
                 "-u admin -p password"
     }
 
