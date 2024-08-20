@@ -44,6 +44,67 @@ class CmdRes {
     String out
 }
 
+class AWSCred {
+    String accessKey
+    String secretKey
+    String token
+
+    AWSCred(String accessKey, String secretKey, String token = null) {
+        this.accessKey = accessKey
+        this.secretKey = secretKey
+        this.token = token
+    }
+
+    Boolean isValid() {
+        return accessKey && secretKey
+    }
+
+    String toString() {
+        def opts = getOpts()
+        return opts.join(",")
+    }
+
+    def updateMap(Map map) {
+        if (!isValid()) {
+            return
+        }
+        if (hasAllKeyCaseInsensitive(map, ["accesskey", "secret"])) {
+            return
+        }
+        map.put("accesskey", accessKey)
+        map.put("secret", secretKey)
+        if (token) {
+            map.put("token", token)
+        }
+    }
+
+    List<String> getOpts() {
+        def ret = ["accesskey=${accessKey}", "secret=${secretKey}"]
+        if (token) {
+            ret.add("token=${token}")
+        }
+        return ret
+    }
+
+    private static boolean hasAllKeyCaseInsensitive(
+            Map map, Collection<String> keys) {
+        final expectedSize = keys.size()
+        def matched = 0
+        // compare the keys in a case-insensitive way
+        for (String key : keys) {
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                if (key.equalsIgnoreCase(entry.key)) {
+                    matched++
+                    break
+                }
+            }
+        }
+        return matched == expectedSize
+    }
+}
+
+
+
 /**
  * The Global class is copied from the same class in NextFlow.
  * We copy some implementation because they are updated in different releases.
@@ -109,23 +170,23 @@ class Global {
         Map<String, String> env = SysEnv.get()
         final dir = env.get('NXF_PLUGINS_DIR')
         if (dir) {
-            log.trace "Detected NXF_PLUGINS_DIR=$dir"
+            log.trace "[FLOAT] Detected NXF_PLUGINS_DIR=$dir"
             return Paths.get(dir)
         } else if (env.containsKey('NXF_HOME')) {
-            log.trace "Detected NXF_HOME - Using ${env.NXF_HOME}/plugins"
+            log.trace "[FLOAT] Detected NXF_HOME - Using ${env.NXF_HOME}/plugins"
             return Paths.get(env.NXF_HOME, 'plugins')
         } else {
-            log.trace "Using local plugins directory"
+            log.trace "[FLOAT] Using local plugins directory"
             return Paths.get('plugins')
         }
     }
 
     @PackageScope
-    static List<String> getAwsCredentials(Map env, Map config) {
+    static AWSCred getAwsCredentials(Map config) {
 
         def home = Paths.get(System.properties.get('user.home') as String)
         def files = [home.resolve('.aws/credentials'), home.resolve('.aws/config')]
-        getAwsCredentials0(env, config, files)
+        getAwsCredentials0(config, files)
     }
 
     static def setEnv(String key, String value) {
@@ -141,6 +202,24 @@ class Global {
         }
     }
 
+    static def getEnvFromAny(Collection<String> keys) {
+        def env = System.getenv()
+        return getMapValueFromAnyKey(env, keys)
+    }
+
+    static def getMapValueFromAnyKey(Map map, Collection<String> keys) {
+        String ret = ""
+        for (String key : keys) {
+            if (map.containsKey(key)) {
+                ret = map.get(key)
+                if (ret) {
+                    break
+                }
+            }
+        }
+        return ret
+    }
+
     /**
      * Retrieve the AWS credentials from the given context. It look for AWS credential in the following order
      * 1) Nextflow config {@code aws.accessKey} and {@code aws.secretKey} pair
@@ -154,51 +233,52 @@ class Global {
      * {@code null} if the credentials are missing
      */
     @PackageScope
-    static List<String> getAwsCredentials0(Map env, Map config, List<Path> files = []) {
-
-        String a
-        String b
+    static AWSCred getAwsCredentials0(Map config, List<Path> files = []) {
+        String key
+        String secret
+        String token
+        AWSCred ret
 
         if (config && config.aws instanceof Map) {
-            a = ((Map) config.aws).accessKey
-            b = ((Map) config.aws).secretKey
+            key = ((Map) config.aws).accessKey
+            secret = ((Map) config.aws).secretKey
+            token = ((Map) config.aws).token
 
-            if (a && b) {
-                log.debug "Using AWS credentials defined in nextflow config file"
-                return [a, b]
+            ret = new AWSCred(key, secret, token)
+            if (ret.isValid()) {
+                log.debug "[FLOAT] Using AWS credentials defined in nextflow config file"
+                return ret
             }
 
         }
 
         // as define by amazon doc
         // http://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
-        if (env && (a = env.AWS_ACCESS_KEY_ID) && (b = env.AWS_SECRET_ACCESS_KEY)) {
-            log.debug "Using AWS credentials defined by environment variables AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY"
-            return [a, b]
-        }
-
-        if (env && (a = env.AWS_ACCESS_KEY) && (b = env.AWS_SECRET_KEY)) {
-            log.debug "Using AWS credentials defined by environment variables AWS_ACCESS_KEY and AWS_SECRET_KEY"
-            return [a, b]
+        key = getEnvFromAny(['AWS_ACCESS_KEY_ID', 'AWS_ACCESS_KEY'])
+        secret = getEnvFromAny(['AWS_SECRET_ACCESS_KEY', 'AWS_SECRET_KEY'])
+        token = getEnvFromAny(['AWS_SESSION_TOKEN', 'AWS_TOKEN'])
+        ret = new AWSCred(key, secret, token)
+        if (ret.isValid()) {
+            log.debug "[FLOAT] Using AWS credentials defined by environment variables"
+            return ret
         }
 
         for (Path it : files) {
             final conf = new IniFile(it)
+            def env = System.getenv()
             final profile = getAwsProfile0(env, config)
             final section = conf.section(profile)
-            if ((a = section.aws_access_key_id) && (b = section.aws_secret_access_key)) {
-                final token = section.aws_session_token
-                if (token) {
-                    log.debug "Using AWS temporary session credentials defined in `$profile` section in file: ${conf.file}"
-                    return [a, b, token]
-                } else {
-                    log.debug "Using AWS credential defined in `$profile` section in file: ${conf.file}"
-                    return [a, b]
+            if ((key = section.aws_access_key_id) && (secret = section.aws_secret_access_key)) {
+                token = section.aws_session_token
+                ret = new AWSCred(key, secret, token)
+                if (ret.isValid()) {
+                    log.debug "[FLOAT] Using AWS credentials defined in `$profile` section in file: ${conf.file}"
+                    return ret
                 }
             }
         }
-
-        return null
+        ret = new AWSCred("", "", "")
+        return ret
     }
 
     static protected String getAwsProfile0(Map env, Map<String, Object> config) {

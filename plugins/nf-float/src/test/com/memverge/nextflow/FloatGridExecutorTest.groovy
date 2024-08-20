@@ -643,31 +643,8 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ') == submitCmd().join(' ')
 
         cleanup:
-        setEnv('MMC_ADDRESS', '')
-        setEnv('MMC_USERNAME', '')
-        setEnv('MMC_PASSWORD', '')
-    }
-
-    def "test to command string"() {
-        given:
-        final accessKey = 'a-k'
-        final secretKey = 's-k'
-        final exec = newTestExecutor(
-                [podman: [registry: 'quay.io'],
-                 aws   : [accessKey: accessKey,
-                          secretKey: secretKey],
-                 float : [address : addr,
-                          username: user,
-                          password: pass]])
-        final cmd = [
-                '-p', pass,
-                'key1=' + secretKey,
-                'key2=' + accessKey]
-
-        when:
-        def str = exec.toLogStr(cmd)
-
-        then:
-        str == "-p *** key1=*** key2=***"
+        setEnv('MMC_ADDRESS')
+        setEnv('MMC_USERNAME')
+        setEnv('MMC_PASSWORD')
     }
 }

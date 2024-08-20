@@ -27,7 +27,7 @@ import java.nio.file.Paths
 import java.util.concurrent.atomic.AtomicInteger
 
 class BaseTest extends Specification {
-    def setEnv(String key, String value) {
+    def setEnv(String key, String value = "") {
         Global.setEnv(key, value)
     }
 }

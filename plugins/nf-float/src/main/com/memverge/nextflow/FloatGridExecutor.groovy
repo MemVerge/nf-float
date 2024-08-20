@@ -196,22 +196,6 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return job
     }
 
-    String toLogStr(List<String> floatCmd) {
-        def ret = floatCmd.join(" ")
-        final toReplace = [
-                ("-p " + floatConf.password): "-p ***",
-                (floatConf.s3accessKey)     : "***",
-                (floatConf.s3secretKey)     : "***",
-        ]
-        for (def entry : toReplace.entrySet()) {
-            if (!entry.key) {
-                continue
-            }
-            ret = ret.replace(entry.key, entry.value)
-        }
-        return ret
-    }
-
     private static def warnDeprecated(String deprecated, String replacement) {
         log.warn1 "[FLOAT] process `$deprecated` " +
                 "is no longer supported, " +
@@ -245,7 +229,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             volumes << floatConf.getInputVolume(src.uri)
         }
         def ret = volumes.unique() - ""
-        log.info "[FLOAT] volumes to mount for ${task.id}: ${toLogStr(ret)}"
+        log.info "[FLOAT] volumes to mount for ${task.id}: ${floatConf.toLogStr(ret)}"
         return ret
     }
 
@@ -388,7 +372,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             cmd << '--vmPolicy' << '[onDemand=true]'
         }
         cmd.addAll(getExtra(task))
-        log.info "[FLOAT] submit job: ${toLogStr(cmd)}"
+        log.info "[FLOAT] submit job: ${floatConf.toLogStr(cmd)}"
         return cmd
     }
 
@@ -465,7 +449,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             if (ret != 0) {
                 def m = """\
                 Unable to kill pending jobs
-                - cmd executed: ${toLogStr(cmd)}}
+                - cmd executed: ${floatConf.toLogStr(cmd)}}
                 - exit status : $ret
                 - output      :
                 """.stripIndent()
@@ -501,7 +485,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             cmd << '-j'
             cmd << floatJobID
             cmd << '-f'
-            log.info "[FLOAT] cancel job: ${toLogStr(cmd)}"
+            log.info "[FLOAT] cancel job: ${floatConf.toLogStr(cmd)}"
             ret.add(cmd)
         }
         return ret
@@ -512,7 +496,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         def cmd = floatConf.getCliPrefix(null)
         cmd << 'cancel'
         cmd << '-j'
-        log.info "[FLOAT] cancel job: ${toLogStr(cmd)}"
+        log.info "[FLOAT] cancel job: ${floatConf.toLogStr(cmd)}"
         return cmd
     }
 

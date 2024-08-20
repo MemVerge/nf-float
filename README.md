@@ -181,6 +181,7 @@ Unknown config secret 'MMC_USERNAME'
 ### Configure s3 work directory
 
 To enable s3 as work directory, user need to set work directory to a s3 bucket.
+Note `token` is optional.  If you don't have a token, you can leave it empty.
 ```groovy
 plugins {
     id 'nf-float'
@@ -205,6 +206,7 @@ float {
 aws {
   accessKey = '***'
   secretKey = '***'
+  token = '***'
   region = 'us-east-2'
 }
 ```
@@ -217,6 +219,7 @@ Nextflow looks for AWS credentials in the following order:
 * the `nextflow.config` file in the pipeline execution directory
 * the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`
 * the environment variables `AWS_ACCESS_KEY` and `AWS_SECRET_KEY`
+* the environment variables `AWS_TOKEN` and `AWS_SESSION_TOKEN`
 * the default profile in the AWS credentials file located at `~/.aws/credentials`
 * the default profile in the AWS client configuration file located at `~/.aws/config`
 * the temporary AWS credentials provided by an IAM instance role. See IAM Roles documentation for details.

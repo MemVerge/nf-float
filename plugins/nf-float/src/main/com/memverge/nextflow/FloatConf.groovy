@@ -49,8 +49,7 @@ class FloatConf {
     Collection<String> addresses
     String nfs
 
-    String s3accessKey
-    String s3secretKey
+    AWSCred s3cred
 
     /** parameters for submitting the tasks */
     String vmPolicy
@@ -78,7 +77,7 @@ class FloatConf {
         }
         FloatConf ret = new FloatConf()
 
-        ret.initAwsConf(config)
+        ret.s3cred = Global.getAwsCredentials(config)
         ret.initFloatConf(config.float as Map)
 
         return ret
@@ -91,9 +90,8 @@ class FloatConf {
     String getInputVolume(URI input) {
         if (isS3(input)) {
             def options = ["mode=rw"]
-            if (s3accessKey && s3secretKey) {
-                options.add("accesskey=" + s3accessKey)
-                options.add("secret=" + s3secretKey)
+            if (s3cred.isValid()) {
+                options.addAll(s3cred.opts)
             }
             final optionsStr = options.join(",")
 
@@ -123,7 +121,7 @@ class FloatConf {
 
     private String parseNfs(String nfsOption) {
         def vol = new DataVolume(nfsOption)
-        vol.setS3Credentials(s3accessKey, s3secretKey)
+        vol.setS3Credentials(s3cred)
         return vol.toString()
     }
 
@@ -199,18 +197,28 @@ class FloatConf {
                 "use `$replacement` instead"
     }
 
-    private void initAwsConf(Map conf) {
-        def cred = Global.getAwsCredentials(System.getenv(), conf)
-        if (cred && cred.size() > 1) {
-            s3accessKey = cred[0]
-            s3secretKey = cred[1]
-        }
-    }
-
     void validate() {
         if (addresses.size() == 0) {
             throw new AbortOperationException("missing MMCE OC address")
         }
+    }
+
+    String toLogStr(List<String> cmd) {
+        final stars = "***"
+        def ret = cmd.join(" ")
+        final toReplace = [("-p " + password): "-p " + stars]
+        if (s3cred.isValid()) {
+            toReplace[s3cred.accessKey] = stars
+            toReplace[s3cred.secretKey] = stars
+            toReplace[s3cred.token] = stars
+        }
+        for (def entry : toReplace.entrySet()) {
+            if (!entry.key) {
+                continue
+            }
+            ret = ret.replace(entry.key, entry.value)
+        }
+        return ret
     }
 
     List<String> getCliPrefix(TaskId id) {
@@ -266,20 +274,14 @@ class DataVolume {
         }
     }
 
-    def setS3Credentials(String key, String secret) {
+    def setS3Credentials(AWSCred cred) {
         if (scheme != "s3") {
             return
         }
-        final accessKey = "accessKey"
-        final secretKey = "secret"
-        if (!options.containsKey(accessKey) || !options.containsKey(secretKey)) {
-            if (key != null) {
-                options[accessKey] = key
-            }
-            if (secret != null) {
-                options[secretKey] = secret
-            }
+        if (cred) {
+            cred.updateMap(options)
         }
+
         if (!options.containsKey('mode')) {
             options['mode'] = "rw"
         }
