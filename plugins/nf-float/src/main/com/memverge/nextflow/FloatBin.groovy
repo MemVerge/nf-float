@@ -11,6 +11,7 @@ import java.util.regex.Pattern
 @Slf4j
 class FloatBin {
     private static final binName = 'float'
+    private static logged = false
 
     /**
      * This function checks if the float binary is available in the plugin
@@ -38,11 +39,11 @@ class FloatBin {
             }
             ret = targetDir.resolve(binName)
             try {
-                log.info "try downloading $src to $ret"
+                log.info "[FLOAT] try downloading $src to $ret"
                 Global.download(src, ret)
                 ret.setExecutable(true)
             } catch (Exception ex) {
-                log.warn("download ${binName} failed: ${ex.message}")
+                log.warn("[FLOAT] download ${binName} failed: ${ex.message}")
                 return Paths.get(binName)
             }
         }
@@ -67,11 +68,14 @@ class FloatBin {
         for (String path : paths) {
             def floatPath = Paths.get(path).resolve(binName)
             if (Files.exists(floatPath)) {
-                log.info "found float binary in $path"
+                if (!logged) {
+                    log.info "[FLOAT] found float binary in $path"
+                    logged = true
+                }
                 return floatPath
             }
         }
-        log.info "${binName} binary not found"
+        log.warn "[FLOAT] ${binName} binary not found"
         return null
     }
 }

@@ -38,45 +38,28 @@ class FloatGridExecutorMultiOCTest extends FloatBaseTest {
 
         when:
         def cmd1 = exec.getSubmitCommandLine(
-                newTask(exec), Paths.get(script))
+                newTask(exec, 1), Paths.get(script))
         def cmd2 = exec.getSubmitCommandLine(
-                newTask(exec), Paths.get(script))
-        def expected1 = submitCmd(addr: "fb", taskIndex: 1)
-        def expected2 = submitCmd(addr: "fa", taskIndex: 2)
+                newTask(exec, 2), Paths.get(script))
+        def expected1 = submitCmd(addr: "fb", taskID: 1)
+        def expected2 = submitCmd(addr: "fa", taskID: 2)
 
         then:
         cmd1.join(' ') == expected1.join(' ')
         cmd2.join(' ') == expected2.join(' ')
     }
 
-    def "get queue status commands"() {
-        given:
-        def exec = newTestExecutor()
-
-        when:
-        def cmdMap = exec.queueStatusCommands()
-        def cmd1 = cmdMap['fa']
-        def cmd2 = cmdMap['fb']
-
-        then:
-        cmd1.join(' ') == "${bin} -a fa -u ${user} -p ${pass} " +
-                "list --format json"
-        cmd2.join(' ') == "${bin} -a fb -u ${user} -p ${pass} " +
-                "list --format json"
-    }
-
     def "input multiple addresses as list"() {
         given:
         def exec = newTestExecutor()
-        def task = newTask(exec)
 
         when:
         def cmd1 = exec.getSubmitCommandLine(
-                newTask(exec), Paths.get(script))
+                newTask(exec, 2), Paths.get(script))
         def cmd2 = exec.getSubmitCommandLine(
-                newTask(exec), Paths.get(script))
-        def expected1 = submitCmd(addr: "fa", taskIndex: 2)
-        def expected2 = submitCmd(addr: "fb", taskIndex: 3)
+                newTask(exec, 3), Paths.get(script))
+        def expected1 = submitCmd(addr: "fa", taskID: 2)
+        def expected2 = submitCmd(addr: "fb", taskID: 3)
 
         then:
         cmd1.join(' ') == expected1.join(' ')

@@ -77,6 +77,18 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "kill commands"() {
         given:
         final exec = newTestExecutor()
+        exec.floatJobs.updateJob(FloatJob.parse(
+            """
+                  id: a
+                  customTags:
+                      nf-job-id: tJob-1
+                  """))
+        exec.floatJobs.updateJob(FloatJob.parse(
+                """
+                  id: b
+                  customTags:
+                      nf-job-id: tJob-2
+                  """))
 
         when:
         final commands = exec.killTaskCommands(['a', 'b'])
@@ -100,7 +112,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                 username: user,
                 password: pass,
                 nfs     : dataVolume]])
-        final task = newTask(exec)
+        final task = newTask(exec, 0)
 
         when:
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
@@ -114,11 +126,11 @@ class FloatGridExecutorTest extends FloatBaseTest {
         given:
         final dataVolume = nfs + ':/data'
         final exec = newTestExecutor([float: [
-                address : addr,
-                maxCpuFactor: 3,
+                address        : addr,
+                maxCpuFactor   : 3,
                 maxMemoryFactor: 2.51,
-                nfs     : dataVolume]])
-        final task = newTask(exec)
+                nfs            : dataVolume]])
+        final task = newTask(exec, 0)
 
         when:
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
@@ -131,7 +143,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "add default local mount point"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec)
+        final task = newTask(exec, 0)
 
         when:
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
@@ -144,7 +156,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use cpus, memory and container"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 cpus: 8,
                 memory: '16 GB',
                 container: "biocontainers/star"))
@@ -169,7 +181,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          nfs        : nfs,
                          commonExtra: '-t \t small -f ']]
         )
-        final task = newTask(exec)
+        final task = newTask(exec, 0)
 
         when:
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
@@ -188,7 +200,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          nfs        : nfs,
                          commonExtra: '--dataVolume  [opts="-o allow_other"]s3://1.2.3.4:/a:/a  --rootVolSize 10']]
         )
-        final task = newTask(exec)
+        final task = newTask(exec, 0)
 
         when:
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
@@ -205,7 +217,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "add specific extras"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 extra: ' -f -t \t small  ',
                 cpus: 2,
                 memory: "4 G",
@@ -224,7 +236,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "incorrect cpu and memory settings"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 extra: ' -f -t \t small  ',
                 cpu: 2,
                 mem: 4,
@@ -250,7 +262,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          nfs        : nfs,
                          commonExtra: '-t \t small -f ']]
         )
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 extra: '--customTag hello',
                 cpus: 2,
                 memory: "4 G",
@@ -273,7 +285,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         final cpu = 3
         final mem = 6
         final exec = newTestExecutor()
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 cpus: cpu,
                 memory: "$mem G",
                 container: image,
@@ -292,7 +304,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use default nfs and work dir"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec)
+        final task = newTask(exec, 0)
 
         when:
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
@@ -304,7 +316,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "trim space and quotes in image"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 cpus: cpu,
                 memory: "$mem G",
                 container: "\"' $image\t'\"",
@@ -321,7 +333,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "parse data volume"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 cpus: cpu,
                 memory: "$mem G",
                 container: image,
@@ -341,7 +353,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use machine type directive"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 machineType: 't2.xlarge',
         ))
@@ -356,7 +368,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use disk directive"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 disk: '41G',
         ))
@@ -371,7 +383,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use time directive"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 time: '24h',
         ))
@@ -391,7 +403,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          password  : pass,
                          nfs       : nfs,
                          timeFactor: 1.1]])
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 time: '1h',
         ))
@@ -410,7 +422,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          username: user,
                          password: pass,
                          nfs     : nfs]])
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 time: '1h',
                 attempt: 2,
@@ -431,7 +443,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          password : pass,
                          nfs      : nfs,
                          cpuFactor: 1.5]])
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 cpus: 2,
         ))
@@ -451,7 +463,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          password : pass,
                          nfs      : nfs,
                          cpuFactor: 0.2]])
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 cpus: 1,
         ))
@@ -471,7 +483,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          password    : pass,
                          nfs         : nfs,
                          memoryFactor: 0.5]])
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 memory: "8 GB",
         ))
@@ -491,7 +503,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          password    : pass,
                          nfs         : nfs,
                          memoryFactor: 0.5]])
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 memory: 8,
         ))
@@ -512,7 +524,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                         password    : pass,
                         nfs         : nfs,
                         extraOptions: option]])
-        final task = newTask(exec)
+        final task = newTask(exec, 0)
 
         when:
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
@@ -525,7 +537,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use resourceLabels directive"() {
         given:
         final exec = newTestExecutor()
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 resourceLabels: [foo: 'bar'],
         ))
@@ -537,18 +549,15 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ').contains('--customTag foo:bar')
     }
 
-    private def taskStatus(int i, String st) {
+    private static def taskStatus(int i, String st) {
         return """
-            {
-                "id": "task$i",
-                "name": "tJob-$i",
-                "user": "admin",
-                "imageID": "docker.io/memverge/cactus:latest",
-                "status": "$st",
-                "customTags": {
-                    "nf-job-id": "tJob-$i"
-                }
-            }
+                id: task$i,
+                name: tJob-$i
+                user: admin
+                imageID: docker.io/memverge/cactus:latest,
+                status: $st,
+                customTags:
+                    nf-job-id: tJob-$i
             """
     }
 
@@ -571,31 +580,19 @@ class FloatGridExecutorTest extends FloatBaseTest {
                 12: "Resuming",
                 13: "Capturing",
         ]
-        def statusList = []
-        for (def item : taskMap.entrySet()) {
-            statusList.add(taskStatus(item.key, item.value))
-        }
-        final text = "[" + statusList.join(",") + "]".stripIndent()
 
         when:
-        final count = taskMap.size() - 1
-        (0..count).forEach {
-            def task = newTask(exec)
-            task.workDir = Paths.get(
-                    'src', 'test', 'com', 'memverge', 'nextflow')
-            task.id = new TaskId(it)
-            exec.getHeaderScript(task)
+        final count = taskMap.size()
+        // update a list of the task status
+        for ( def entry : taskMap.entrySet()) {
+            exec.floatJobs.updateJob(FloatJob.parse(taskStatus(entry.key, entry.value)))
         }
-
-
-        def dir = Paths.get('src', 'test', 'com', 'memverge')
-        exec.floatJobs.setWorkDir(new TaskId(8), dir)
-        def res = exec.parseQueueStatus(text)
+        def res = exec.parseQueueStatus("")
 
         then:
         //noinspection GroovyAccessibility
         def qs = AbstractGridExecutor.QueueStatus
-        res.size() == count + 1
+        res.size() == count
         res['tJob-0'] == qs.PENDING
         res['tJob-1'] == qs.PENDING
         res['tJob-2'] == qs.RUNNING
@@ -620,10 +617,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         def cmd = exec.queueStatusCommand(null)
 
         then:
-        cmd == [bin, '-a', addr,
-                '-u', user,
-                '-p', pass,
-                'list', '--format', 'json']
+        cmd == []
     }
 
     def "retrieve the credentials from env"() {
@@ -637,7 +631,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          nfs: nfs]])
 
 
-        final task = newTask(exec, new TaskConfig(
+        final task = newTask(exec, 0, new TaskConfig(
                 cpus: cpu,
                 memory: "$mem G",
                 container: image))

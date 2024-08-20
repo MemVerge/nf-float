@@ -43,7 +43,6 @@ class FloatBaseTest extends BaseTest {
     def image = 'cactus'
     def script = '/path/job.sh'
     def workDir = '/mnt/nfs/shared'
-    def taskID = new TaskId(55)
     def uuid = UUID.fromString("00000000-0000-0000-0000-000000000000")
     def bin = FloatBin.get("").toString()
     private AtomicInteger taskSerial = new AtomicInteger()
@@ -70,13 +69,13 @@ class FloatBaseTest extends BaseTest {
         exec.session = sess
         exec.session.workDir = Paths.get(workDir)
         exec.floatJobs.setTaskPrefix(tJob)
-        exec.session.runName = 'test_run'
+        exec.session.runName = 'test-run'
         //noinspection GroovyAccessibility
         exec.session.uniqueId = uuid
         return exec
     }
 
-    def newTask(FloatTestExecutor exec, TaskConfig conf = null) {
+    def newTask(FloatTestExecutor exec, int id, TaskConfig conf = null) {
         if (conf == null) {
             conf = new TaskConfig(cpus: cpu,
                     memory: "$mem G",
@@ -87,10 +86,10 @@ class FloatBaseTest extends BaseTest {
         task.processor.getSession() >> Mock(Session)
         task.processor.getExecutor() >> exec
         task.config = conf
-        task.id = taskID
+        task.id = new TaskId(id)
         task.index = taskSerial.incrementAndGet()
         task.workDir = Paths.get(workDir)
-        task.name = "foo (${task.index})"
+        task.name = "foo (${task.id})"
         return task
     }
 
@@ -99,7 +98,8 @@ class FloatBaseTest extends BaseTest {
     }
 
     def submitCmd(Map param = [:]) {
-        def taskIndex = param.taskIndex?:'1'
+        def taskIDStr = param.taskID ? param.taskID.toString() : '0'
+        Integer taskID = Integer.parseInt(taskIDStr)
         def realCpu = param.cpu ?: cpu
         def realMem = param.memory ?: mem
         return [bin, '-a', param.addr ?: addr,
@@ -112,9 +112,9 @@ class FloatBaseTest extends BaseTest {
                 '--mem', realMem + ':' + realMem * FloatConf.DFT_MAX_MEM_FACTOR,
                 '--job', script,
                 '--disableRerun',
-                '--customTag', jobID(taskID),
+                '--customTag', jobID(new TaskId(taskID)),
                 '--customTag', "${FloatConf.NF_SESSION_ID}:uuid-$uuid",
-                '--customTag', "${FloatConf.NF_TASK_NAME}:foo--$taskIndex-",
+                '--customTag', "${FloatConf.NF_TASK_NAME}:foo--$taskIDStr-",
                 '--customTag', "${FloatConf.FLOAT_INPUT_SIZE}:0",
                 '--customTag', "${FloatConf.NF_RUN_NAME}:test-run"]
     }
