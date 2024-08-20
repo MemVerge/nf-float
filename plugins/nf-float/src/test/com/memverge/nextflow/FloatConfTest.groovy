@@ -106,7 +106,7 @@ class FloatConfTest extends BaseTest {
 
     def "credentials are optional"() {
         given:
-        def conf = [float:[address:"1.2.3.4"]]
+        def conf = [float: [address: "1.2.3.4"]]
 
         when:
         def fConf = FloatConf.getConf(conf)
@@ -147,11 +147,11 @@ class FloatConfTest extends BaseTest {
                 's3://bucket:/bucket'
 
         cleanup:
-        setEnv('AWS_ACCESS_KEY_ID', '')
-        setEnv('AWS_SECRET_ACCESS_KEY', '')
+        setEnv('AWS_ACCESS_KEY_ID')
+        setEnv('AWS_SECRET_ACCESS_KEY')
     }
 
-    def "get s3 credentials from env 1" () {
+    def "get s3 credentials from env 1"() {
         given:
         setEnv('AWS_ACCESS_KEY', 'aak')
         setEnv('AWS_SECRET_KEY', 'ask')
@@ -166,8 +166,8 @@ class FloatConfTest extends BaseTest {
                 's3://bucket:/bucket'
 
         cleanup:
-        setEnv('AWS_ACCESS_KEY', '')
-        setEnv('AWS_SECRET_KEY', '')
+        setEnv('AWS_ACCESS_KEY')
+        setEnv('AWS_SECRET_KEY')
     }
 
     def "get local path with nfs"() {
@@ -207,9 +207,9 @@ class FloatConfTest extends BaseTest {
         FloatConf.getConf([float: [vmPolicy: CONF]]).vmPolicy == STR
 
         where:
-        CONF                                              | STR
-        [spotOnly:true,retryLimit:10,retryInterval:'30s'] | '[spotOnly=true,retryLimit=10,retryInterval=30s]'
-        [spotOnly:true,priceLimit:0.1]                    | '[spotOnly=true,priceLimit=0.1]'
+        CONF                                                   | STR
+        [spotOnly: true, retryLimit: 10, retryInterval: '30s'] | '[spotOnly=true,retryLimit=10,retryInterval=30s]'
+        [spotOnly: true, priceLimit: 0.1]                      | '[spotOnly=true,priceLimit=0.1]'
     }
 
     def "get migrate policy from config"() {
@@ -217,11 +217,11 @@ class FloatConfTest extends BaseTest {
         FloatConf.getConf([float: [migratePolicy: CONF]]).migratePolicy == STR
 
         where:
-        CONF                                                | STR
-        [disable:true]                                      | '[disable=true]'
-        [cpu:[upperBoundRatio:90,upperBoundDuration:'10s']] | '[cpu.upperBoundRatio=90,cpu.upperBoundDuration=10s]'
-        [cpu:[lowerBoundRatio:30],mem:[upperBoundRatio:90]] | '[cpu.lowerBoundRatio=30,mem.upperBoundRatio=90]'
-        [cpu:[step:50]]                                     | '[cpu.step=50]'
+        CONF                                                     | STR
+        [disable: true]                                          | '[disable=true]'
+        [cpu: [upperBoundRatio: 90, upperBoundDuration: '10s']]  | '[cpu.upperBoundRatio=90,cpu.upperBoundDuration=10s]'
+        [cpu: [lowerBoundRatio: 30], mem: [upperBoundRatio: 90]] | '[cpu.lowerBoundRatio=30,mem.upperBoundRatio=90]'
+        [cpu: [step: 50]]                                        | '[cpu.step=50]'
     }
 
     def "update s3 credentials"() {
@@ -236,7 +236,53 @@ class FloatConfTest extends BaseTest {
         def volume = fConf.getWorkDirVol(workDir)
 
         then:
-        volume == '[accessKey=x,mode=rw,secret=y]s3://1.2.3.4/work/dir:/local'
+        volume == '[accesskey=x,mode=rw,secret=y]s3://1.2.3.4/work/dir:/local'
+
+        cleanup:
+        setEnv('AWS_ACCESS_KEY_ID')
+        setEnv('AWS_SECRET_ACCESS_KEY')
+    }
+
+    def "update s3 credentials with token"() {
+        given:
+        setEnv('AWS_ACCESS_KEY_ID', 'x')
+        setEnv('AWS_SECRET_ACCESS_KEY', 'y')
+        setEnv('AWS_SESSION_TOKEN', 'z')
+        def fConf = FloatConf.getConf(
+                [float: [nfs: 's3://1.2.3.4/work/dir:/local']])
+
+        when:
+        def workDir = new URI('file:///local/here')
+        def volume = fConf.getWorkDirVol(workDir)
+
+        then:
+        volume == '[accesskey=x,mode=rw,secret=y,token=z]s3://1.2.3.4/work/dir:/local'
+
+        cleanup:
+        setEnv('AWS_ACCESS_KEY_ID')
+        setEnv('AWS_SECRET_ACCESS_KEY')
+        setEnv('AWS_SESSION_TOKEN')
+    }
+
+    def "hide credentials in log string"() {
+        given:
+        setEnv('AWS_ACCESS_KEY_ID', 'my-key')
+        setEnv('AWS_SECRET_ACCESS_KEY', 'my-secret')
+        setEnv('AWS_SESSION_TOKEN', 'my-token')
+        def fConf = FloatConf.getConf(
+                [float: [nfs: 's3://1.2.3.4/work/dir:/local']])
+
+        when:
+        def logStr = fConf.toLogStr([
+                "[accesskey=my-key,mode=rw,secret=my-secret,token=my-token]"])
+
+        then:
+        logStr == "[accesskey=***,mode=rw,secret=***,token=***]"
+
+        cleanup:
+        setEnv('AWS_ACCESS_KEY_ID')
+        setEnv('AWS_SECRET_ACCESS_KEY')
+        setEnv('AWS_SESSION_TOKEN')
     }
 }
 
@@ -272,7 +318,7 @@ class DataVolumeTest extends BaseTest {
 
         when:
         def vol = new DataVolume(s3)
-        vol.setS3Credentials("x", "y")
+        vol.setS3Credentials(new AWSCred("x", "y"))
 
         then:
         vol.scheme == "s3"
@@ -285,11 +331,11 @@ class DataVolumeTest extends BaseTest {
 
         when:
         def vol = new DataVolume(s3)
-        vol.setS3Credentials("x", "y")
+        vol.setS3Credentials(new AWSCred("x", "y"))
 
         then:
         vol.scheme == "s3"
-        vol.toString() == "[accessKey=x,mode=rw,secret=y]s3://1.2.3.4/my/dir:/mnt/point"
+        vol.toString() == "[accesskey=x,mode=rw,secret=y]s3://1.2.3.4/my/dir:/mnt/point"
     }
 
     def "update s3 credentials" () {
@@ -298,7 +344,7 @@ class DataVolumeTest extends BaseTest {
 
         when:
         def vol = new DataVolume(s3)
-        vol.setS3Credentials(null, null)
+        vol.setS3Credentials(new AWSCred(null, null))
 
         then:
         vol.scheme == "s3"
