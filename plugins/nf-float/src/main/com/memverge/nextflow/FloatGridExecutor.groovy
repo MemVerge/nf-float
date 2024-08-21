@@ -361,7 +361,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             cmd << '--instType' << task.config.getMachineType()
         }
         addVolSize(cmd, task)
-        if (task.config.getTime()) {
+        if (!floatConf.ignoreTimeFactor && task.config.getTime()) {
             Float seconds = task.config.getTime().toSeconds()
             seconds *= floatConf.timeFactor
             cmd << '--timeLimit' << "${seconds.toInteger()}s".toString()

@@ -403,9 +403,30 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ').contains('--imageVolSize 41')
     }
 
-    def "use time directive"() {
+    def "by default, ignore the time directive"() {
         given:
         final exec = newTestExecutor()
+        final task = newTask(exec, 0, new TaskConfig(
+                container: image,
+                time: '24h',
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        !cmd.join(' ').contains('--timeLimit')
+    }
+
+    def "use time directive"() {
+        given:
+        final exec = newTestExecutor([
+                float: [address: addr,
+                        username: user,
+                        password: pass,
+                        nfs: nfs,
+                        ignoreTimeFactor: false]
+        ])
         final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 time: '24h',
@@ -425,6 +446,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                          username  : user,
                          password  : pass,
                          nfs       : nfs,
+                         ignoreTimeFactor: false,
                          timeFactor: 1.1]])
         final task = newTask(exec, 0, new TaskConfig(
                 container: image,

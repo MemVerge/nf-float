@@ -56,6 +56,7 @@ class FloatConf {
     String migratePolicy
     String extraOptions
     String commonExtra
+    boolean ignoreTimeFactor = true
 
     float timeFactor = 1
     float cpuFactor = 1
@@ -165,6 +166,9 @@ class FloatConf {
         }
         if (floatNode.memoryFactor) {
             this.memoryFactory = floatNode.memoryFactor as Float
+        }
+        if (floatNode.containsKey('ignoreTimeFactor')) {
+            this.ignoreTimeFactor = floatNode.ignoreTimeFactor as Boolean
         }
         this.commonExtra = floatNode.commonExtra
 
