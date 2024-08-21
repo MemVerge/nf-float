@@ -135,6 +135,8 @@ Available `float` config options:
               the CLI usage for the list of available options.
 * `vmPolicy`: the VM creation policy, specified as a map.  Refer to the CLI usage
               for the list of available options.
+* `ignoreTimeLimits`: a boolean.  default to true.  If set to true, the plugin will ignore
+  the time limit of the task.
 * `timeFactor`: a float number.  default to 1.  An extra factor to multiply based 
   on the time supplied by the task.  Add time factor to enlarge the default timeout of the task.  
   Because WaveRider may take extra time for job migration.
