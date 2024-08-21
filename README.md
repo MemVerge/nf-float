@@ -123,6 +123,8 @@ process {
   center and the proper credentials.
 * In the `process` scope, we specify `executor = 'float'` to tell Nextflow to execute
   tasks with the Float executor.
+* In the `process` scope, we can use `ext.float = 'xxx'` to pass extra options to the 
+  float command line.  It works the same as `extra`.
 
 Available `float` config options: 
 
@@ -181,7 +183,7 @@ Unknown config secret 'MMC_USERNAME'
 ### Configure s3 work directory
 
 To enable s3 as work directory, user need to set work directory to a s3 bucket.
-Note `token` is optional.  If you don't have a token, you can leave it empty.
+Note `token` is not supported.
 ```groovy
 plugins {
     id 'nf-float'
@@ -206,7 +208,6 @@ float {
 aws {
   accessKey = '***'
   secretKey = '***'
-  token = '***'
   region = 'us-east-2'
 }
 ```
@@ -214,12 +215,10 @@ aws {
 You don't need to specify `nfs` in `float` scope.  The plugin will assemble
 the `nfs` option automatically.
 
-The plugin retrieves the s3 credentials from Nextflow.
-Nextflow looks for AWS credentials in the following order:
+The plugin retrieves the s3 credentials in the following order:
 * the `nextflow.config` file in the pipeline execution directory
 * read key from `AWS_ACCESS_KEY_ID` or `AWS_ACCESS_KEY_ID`
 * read secret from `AWS_SECRET_ACCESS_KEY` or `AWS_SECRET_KEY`
-* read token from `AWS_TOKEN` or `AWS_SESSION_TOKEN` if applicable
 * the default profile in the AWS credentials file located at `~/.aws/credentials`
 * the default profile in the AWS client configuration file located at `~/.aws/config`
 * the temporary AWS credentials provided by an IAM instance role. See IAM Roles documentation for details.
@@ -231,6 +230,49 @@ Tests done for s3 work directory support:
 * trivial sequence and scatter workflow.
 * the test profile of nf-core/rnaseq
 * the test profile of nf-core/sarek
+
+### Configure s3fs work directory
+
+To enable s3fs as work directory, user need to set work directory to a s3 bucket.
+Note `token` is optional.  If you don't have a token, you can leave it empty.
+```groovy
+plugins {
+    id 'nf-float'
+}
+
+workDir = '/s3/bucket'
+
+process {
+    executor = 'float'
+    container = 'fedora/fedora-minimal'
+}
+
+podman.registry = 'quay.io'
+
+float {
+    address = 'op.center.address'
+    username = secrets.MMC_USERNAME
+    password = secrets.MMC_PASSWORD
+    nfs = 's3://bucket:/s3/bucket'
+    timeFactor = 2
+}
+
+aws {
+  accessKey = '***'
+  secretKey = '***'
+  token = '***'
+  region = 'us-east-2'
+}
+```
+
+The plugin retrieves the s3 credentials in the following order:
+* the `nextflow.config` file in the pipeline execution directory
+* read key from `AWS_ACCESS_KEY_ID` or `AWS_ACCESS_KEY_ID`
+* read secret from `AWS_SECRET_ACCESS_KEY` or `AWS_SECRET_KEY`
+* read token from `AWS_TOKEN` or `AWS_SESSION_TOKEN` if applicable
+* the default profile in the AWS credentials file located at `~/.aws/credentials`
+* the default profile in the AWS client configuration file located at `~/.aws/config`
+* the temporary AWS credentials provided by an IAM instance role. See IAM Roles documentation for details.
 
 
 ### Configure fusion FS over s3
