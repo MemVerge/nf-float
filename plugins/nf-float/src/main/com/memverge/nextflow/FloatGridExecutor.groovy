@@ -134,13 +134,20 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     private Collection<String> getExtra(TaskRun task) {
-        final extraNode = task.config.extra
-        def extra = extraNode ? extraNode as String : ''
+        List<String> extras = []
         final common = floatConf.commonExtra
         if (common) {
-            extra = common.trim() + " " + extra.trim()
+            extras.add(common.trim())
         }
-        def ret = splitWithQuotes(extra)
+        final extraNode = task.config.extra
+        if (extraNode) {
+            extras.add((extraNode as String).trim())
+        }
+        final extFloat = task.config.ext?['float']
+        if (extFloat) {
+            extras.add((extFloat as String).trim())
+        }
+        def ret = splitWithQuotes(extras.join(' '))
         return ret.findAll { it.length() > 0 }
     }
 

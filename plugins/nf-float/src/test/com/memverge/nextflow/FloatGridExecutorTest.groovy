@@ -280,6 +280,29 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ') == expected.join(' ')
     }
 
+    def "define both common extra and ext float"() {
+        given:
+        final exec = newTestExecutor(
+                [float: [address    : addr,
+                         username   : user,
+                         password   : pass,
+                         nfs        : nfs,
+                         commonExtra: '-f']]
+        )
+        final task = newTask(exec, 0, new TaskConfig(
+                ext: [float: '-t small'],
+                cpus: 2,
+                memory: "4 G",
+                container: image))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+        final expected = submitCmd(cpu: 2, memory: 4) + ['-f', '-t', 'small']
+
+        then:
+        cmd.join(' ') == expected.join(' ')
+    }
+
     def "config level cpu and memory"() {
         given:
         final cpu = 3
