@@ -19,8 +19,10 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.exception.AbortOperationException
 import nextflow.executor.AbstractGridExecutor
+import nextflow.executor.BashWrapperBuilder
 import nextflow.file.FileHelper
 import nextflow.fusion.FusionHelper
+import nextflow.processor.TaskBean
 import nextflow.processor.TaskId
 import nextflow.processor.TaskRun
 import nextflow.util.Escape
@@ -68,6 +70,16 @@ class FloatGridExecutor extends AbstractGridExecutor {
         assert task.workDir
 
         new FloatTaskHandler(task, this)
+    }
+
+    protected BashWrapperBuilder createBashWrapperBuilder(TaskRun task) {
+        final bean = new TaskBean(task)
+        final strategy = new FloatFileCopyStrategy(floatConf)
+        // creates the wrapper script
+        final builder = new BashWrapperBuilder(bean, strategy)
+        // job directives headers
+        builder.headerScript = getHeaderScript(task)
+        return builder
     }
 
     protected String getHeaderScript(TaskRun task) {

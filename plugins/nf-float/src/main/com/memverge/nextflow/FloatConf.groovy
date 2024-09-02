@@ -61,6 +61,7 @@ class FloatConf {
     float timeFactor = 1
     float cpuFactor = 1
     float memoryFactory = 1
+    int maxParallelTransfers = 4
 
     float maxCpuFactor = DFT_MAX_CPU_FACTOR
     float maxMemoryFactor = DFT_MAX_MEM_FACTOR
@@ -166,6 +167,9 @@ class FloatConf {
         }
         if (floatNode.memoryFactor) {
             this.memoryFactory = floatNode.memoryFactor as Float
+        }
+        if (floatNode.maxParallelTransfers) {
+            this.maxParallelTransfers = floatNode.maxParallelTransfers as Integer
         }
         if (floatNode.containsKey('ignoreTimeFactor')) {
             this.ignoreTimeFactor = floatNode.ignoreTimeFactor as Boolean
