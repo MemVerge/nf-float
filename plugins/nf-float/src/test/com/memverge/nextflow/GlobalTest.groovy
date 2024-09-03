@@ -1,5 +1,9 @@
 package com.memverge.nextflow
 
+import nextflow.processor.TaskConfig
+
+import java.nio.file.Paths
+
 class GlobalTest extends FloatBaseTest {
     def "get env var. of any names"() {
         given:
@@ -78,11 +82,21 @@ class GlobalTest extends FloatBaseTest {
         setEnv("AWS_SECRET_KEY")
     }
 
-    def "retrieve aws credentials from system env, with token"() {
-        given:
+    def setAwsEnvs() {
         setEnv("AWS_ACCESS_KEY", "A")
         setEnv("AWS_SECRET_KEY", "B")
         setEnv("AWS_SESSION_TOKEN", "C")
+    }
+
+    def clearAwsEnvs() {
+        setEnv("AWS_ACCESS_KEY")
+        setEnv("AWS_SECRET_KEY")
+        setEnv("AWS_SESSION_TOKEN")
+    }
+
+    def "retrieve aws credentials from system env, with token"() {
+        given:
+        setAwsEnvs()
         def config = [aws:[]]
 
         when:
@@ -94,8 +108,61 @@ class GlobalTest extends FloatBaseTest {
         res.opts == ["accesskey=A", "secret=B", "token=C"]
 
         cleanup:
-        setEnv("AWS_ACCESS_KEY")
-        setEnv("AWS_SECRET_KEY")
-        setEnv("AWS_SESSION_TOKEN")
+        clearAwsEnvs()
+    }
+
+    def "update arg map with aws credential"() {
+        given:
+        setAwsEnvs()
+        def config = [aws:[]]
+
+        when:
+        def res = Global.getAwsCredentials(config)
+        def argMap = res.updateMap(['banana':'apple'])
+
+        then:
+        res.isValid() == true
+        argMap['accesskey'] == "A"
+        argMap['secret'] == "B"
+        argMap['token'] == "C"
+        argMap['banana'] == "apple"
+
+        cleanup:
+        clearAwsEnvs()
+    }
+
+    def "update env map with aws credential"() {
+        given:
+        setAwsEnvs()
+        def config = [aws:[]]
+
+        when:
+        def res = Global.getAwsCredentials(config)
+        def envMap = res.updateEnvMap([:])
+
+        then:
+        res.isValid() == true
+        envMap['AWS_ACCESS_KEY_ID'] == "A"
+        envMap['AWS_SECRET_ACCESS_KEY'] == "B"
+        envMap['AWS_SESSION_TOKEN'] == "C"
+
+        cleanup:
+        clearAwsEnvs()
+    }
+
+    def "add aws to path if s3 credential is available"() {
+        given:
+        setAwsEnvs()
+        final exec = newTestExecutor()
+        final task = newTask(exec, 0)
+
+        when:
+        def script = exec.getHeaderScript(task)
+
+        then:
+        script.contains("PATH:/opt/aws/dist")
+
+        cleanup:
+        clearAwsEnvs()
     }
 }

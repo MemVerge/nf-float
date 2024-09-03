@@ -16,10 +16,7 @@
 package com.memverge.nextflow
 
 import nextflow.Session
-import nextflow.processor.TaskConfig
-import nextflow.processor.TaskId
-import nextflow.processor.TaskProcessor
-import nextflow.processor.TaskRun
+import nextflow.processor.*
 import spock.lang.Specification
 
 import java.nio.file.Path
@@ -85,12 +82,20 @@ class FloatBaseTest extends BaseTest {
         task.processor = Mock(TaskProcessor)
         task.processor.getSession() >> Mock(Session)
         task.processor.getExecutor() >> exec
+        task.processor.getProcessEnvironment() >> [:]
         task.config = conf
         task.id = new TaskId(id)
         task.index = taskSerial.incrementAndGet()
         task.workDir = Paths.get(workDir)
         task.name = "foo (${task.id})"
         return task
+    }
+
+    def newTaskBean(FloatTestExecutor exec, int id, TaskConfig conf = null) {
+        def task = newTask(exec, id, conf)
+        def bean = new TaskBean(task)
+        bean.stageInMode = 'copy'
+        return bean
     }
 
     def jobID(TaskId id) {
@@ -116,6 +121,7 @@ class FloatBaseTest extends BaseTest {
                 '--customTag', "${FloatConf.NF_SESSION_ID}:uuid-$uuid",
                 '--customTag', "${FloatConf.NF_TASK_NAME}:foo--$taskIDStr-",
                 '--customTag', "${FloatConf.FLOAT_INPUT_SIZE}:0",
-                '--customTag', "${FloatConf.NF_RUN_NAME}:test-run"]
+                '--customTag', "${FloatConf.NF_RUN_NAME}:test-run",
+                '--imageVolSize', '40']
     }
 }
