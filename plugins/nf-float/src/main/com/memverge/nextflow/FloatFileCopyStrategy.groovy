@@ -19,6 +19,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Slf4j
 import nextflow.executor.SimpleFileCopyStrategy
 import nextflow.file.FileSystemPathFactory
+import nextflow.processor.TaskBean
 import nextflow.util.Escape
 
 import java.nio.file.Path
@@ -29,9 +30,25 @@ import java.nio.file.Path
 class FloatFileCopyStrategy extends SimpleFileCopyStrategy {
     private FloatConf conf
 
-    FloatFileCopyStrategy(FloatConf conf) {
-        super()
+    FloatFileCopyStrategy(FloatConf conf, TaskBean bean) {
+        super(bean)
         this.conf = conf
+    }
+
+    @Override
+    String getStageInputFilesScript(Map<String,Path> inputFiles) {
+        def result = 'downloads=(true)\n'
+        result += super.getStageInputFilesScript(inputFiles) + '\n'
+        result += 'nxf_parallel "${downloads[@]}"\n'
+        return result
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    String stageInputFile( Path path, String targetName ) {
+        return """downloads+=("${super.stageInputFile(path, targetName)}")"""
     }
 
     @Override

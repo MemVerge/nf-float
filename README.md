@@ -146,6 +146,9 @@ Available `float` config options:
   to `maxMemoryFactor` * `memory` of the task.
 * `commonExtra`: allows the user to specify other submit CLI options.  This parameter
                  will be appended to every float submit command.
+* `maxParallelTransfers`: an integer.  default to 4.  The maximum number of parallel transfers
+  for the task happened on the worker node.  Note the actual concurrency is the minimum of this 
+  value and the number of available cores.
 
 ### Configure with environment variables
 
@@ -182,6 +185,33 @@ If the secret is not available, Nextflow reports error like this:
 Unknown config secret 'MMC_USERNAME'
 ```
 
+### Configuration best practices
+
+When you are using s3, it's recommended to update the aws client configurations
+based on your environment and the workload.  Here is an example:
+```groovy
+aws {
+  // recommended aws client settings
+  client {
+    maxConnections = 200 // Increase this number to allow large concurrency
+    maxErrorRetry = 10 // Increase the number of retries if needed
+    connectionTimeout = 60000 // timeout in milliseconds, 60 seconds
+    socketTimeout = 60000     // timeout in milliseconds, 60 seconds
+  }
+}
+```
+
+If you are sure that the workflow file is properly composed, it's recommended to
+set proper error strategy and retry limit in the process scope to make sure
+the workflow can be completed.
+Here is an example:
+```groovy
+process {
+  errorStrategy='retry'
+  maxRetries=5  
+}
+```
+
 ### Configure s3 work directory
 
 To enable s3 as work directory, user need to set work directory to a s3 bucket.
@@ -196,6 +226,9 @@ workDir = 's3://bucket/path'
 process {
     executor = 'float'
     container = 'fedora/fedora-minimal'
+    disk = '120 GB'
+    scratch = true
+    stageInMode = 'copy'
 }
 
 podman.registry = 'quay.io'
@@ -204,13 +237,12 @@ float {
     address = 'op.center.address'
     username = secrets.MMC_USERNAME
     password = secrets.MMC_PASSWORD
-    timeFactor = 2
 }
 
 aws {
   accessKey = '***'
   secretKey = '***'
-  region = 'us-east-2'
+  region = 'us-east-2' // optional
 }
 ```
 
@@ -232,6 +264,17 @@ Tests done for s3 work directory support:
 * trivial sequence and scatter workflow.
 * the test profile of nf-core/rnaseq
 * the test profile of nf-core/sarek
+
+You can also enable `scrach = true` in the process scope.  When `scratch` is enabled, the plugin will
+use the scratch space of the worker node to store the task files.  This is useful when the task files
+are large and the network bandwidth is limited.
+
+When `scratch` is enabled, it's strongly recommended to set `stageInMode = 'copy'` in the process scope.
+This will make sure the task files are copied to the scratch space before the task starts.
+
+Because the scratch space is local, you need to add `disk = '100 GB'` to make sure the task has enough
+space to run.  The plugin will also check the total input size of the task and make sure the disk space
+is larger than 5 times of the input size.
 
 ### Configure s3fs work directory
 

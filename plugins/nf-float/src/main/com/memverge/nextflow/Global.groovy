@@ -66,16 +66,32 @@ class AWSCred {
 
     def updateMap(Map map) {
         if (!isValid()) {
-            return
+            return map
         }
         if (hasAllKeyCaseInsensitive(map, ["accesskey", "secret"])) {
-            return
+            return map
         }
         map.put("accesskey", accessKey)
         map.put("secret", secretKey)
         if (token) {
             map.put("token", token)
         }
+        return map
+    }
+
+    Map<String, String> updateEnvMap(Map map) {
+        if (!isValid()) {
+            return map
+        }
+        if (hasAllKeyCaseInsensitive(map, ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"])) {
+            return map
+        }
+        map.put("AWS_ACCESS_KEY_ID", accessKey)
+        map.put("AWS_SECRET_ACCESS_KEY", secretKey)
+        if (token) {
+            map.put("AWS_SESSION_TOKEN", token)
+        }
+        return map
     }
 
     List<String> getOpts() {

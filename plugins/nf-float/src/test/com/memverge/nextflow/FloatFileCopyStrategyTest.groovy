@@ -17,17 +17,16 @@ package com.memverge.nextflow
 
 import java.nio.file.Paths
 
-class FloatFileCopyStrategyTest extends BaseTest {
+class FloatFileCopyStrategyTest extends FloatBaseTest {
 
     def "get before script with conf"() {
         given:
-        def conf = [
-                float: [maxParallelTransfers: 10]
-        ]
+        def conf = [float: [maxParallelTransfers: 10]]
+        def exec = newTestExecutor()
 
         when:
         def fConf = FloatConf.getConf(conf)
-        def strategy = new FloatFileCopyStrategy(fConf)
+        def strategy = new FloatFileCopyStrategy(fConf, newTaskBean(exec, 1))
         final script = strategy.beforeStartScript
 
         then:
@@ -35,18 +34,37 @@ class FloatFileCopyStrategyTest extends BaseTest {
         !script.contains('\nnull')
     }
 
-    def "get unstage output file script"() {
+    def "get stage input file script"() {
         given:
         def conf = [float:[]]
+        def exec = newTestExecutor()
 
         when:
         def fConf = FloatConf.getConf(conf)
-        def strategy = new FloatFileCopyStrategy(fConf)
+        def strategy = new FloatFileCopyStrategy(fConf, newTaskBean(exec, 1))
+        final script = strategy.getStageInputFilesScript(
+                ['a': Paths.get('/target/A')])
+
+        then:
+        script.contains('downloads+=("cp -fRL /target/A a")')
+        script.contains('nxf_parallel')
+        !script.contains('\nnull')
+    }
+
+    def "get unstage output file script"() {
+        given:
+        def conf = [float:[]]
+        def exec = newTestExecutor()
+
+        when:
+        def fConf = FloatConf.getConf(conf)
+        def strategy = new FloatFileCopyStrategy(fConf, newTaskBean(exec, 1))
         final script = strategy.getUnstageOutputFilesScript(
                 ['a',], Paths.get('/target/A'))
 
         then:
         script.contains('eval "ls -1d a"')
+        script.contains('nxf_parallel')
         script.contains('uploads+=("nxf_fs_move "$name" /target/A")')
     }
 }

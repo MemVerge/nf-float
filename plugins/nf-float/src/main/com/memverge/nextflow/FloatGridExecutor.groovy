@@ -41,6 +41,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     private static final int DFT_MEM_GB = 1
     private static final long FUSION_MIN_VOL_SIZE = 80
     private static final long MIN_VOL_SIZE = 40
+    private static final long DISK_INPUT_FACTOR = 5
 
     private FloatJobs _floatJobs
 
@@ -74,7 +75,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
     protected BashWrapperBuilder createBashWrapperBuilder(TaskRun task) {
         final bean = new TaskBean(task)
-        final strategy = new FloatFileCopyStrategy(floatConf)
+        final strategy = new FloatFileCopyStrategy(floatConf, bean)
         // creates the wrapper script
         final builder = new BashWrapperBuilder(bean, strategy)
         // job directives headers
@@ -94,6 +95,11 @@ class FloatGridExecutor extends AbstractGridExecutor {
             result += "export PATH=\$PATH:${binDir}/bin\n"
         }
 
+        if (floatConf.s3cred.isValid()) {
+            // if we have s3 credential, make sure aws cli is available in path
+            result += "export PATH=\$PATH:/opt/aws/dist\n"
+            result += "export LD_LIBRARY_PATH=\$LIBRARY_PATH:/opt/aws/dist\n"
+        }
         return result
     }
 
@@ -252,6 +258,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return ret
     }
 
+    // get the size of the input files in bytes
     private static long getInputFileSize(TaskRun task) {
         long ret = 0
         for (def src : task.getInputFilesMap().values()) {
@@ -261,9 +268,10 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     private Map<String, String> getEnv(FloatTaskHandler handler) {
-        return isFusionEnabled()
+        def ret = isFusionEnabled()
                 ? handler.fusionLauncher().fusionEnv()
                 : [:]
+        return floatConf.s3cred.updateEnvMap(ret)
     }
 
     String getRunName() {
@@ -396,7 +404,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
     }
 
     private void addVolSize(List<String> cmd, TaskRun task) {
-        Long size = MIN_VOL_SIZE
+        long size = MIN_VOL_SIZE
 
         def disk = task.config.getDisk()
         if (disk) {
@@ -405,9 +413,10 @@ class FloatGridExecutor extends AbstractGridExecutor {
         if (isFusionEnabled()) {
             size = Math.max(size, FUSION_MIN_VOL_SIZE)
         }
-        if (size > MIN_VOL_SIZE) {
-            cmd << '--imageVolSize' << size.toString()
-        }
+        long inputSizeGB =  (long)(getInputFileSize(task) / 1024 / 1024 / 1024)
+        long minDiskSizeBasedOnInput = inputSizeGB * DISK_INPUT_FACTOR
+        size = Math.max(size, minDiskSizeBasedOnInput)
+        cmd << '--imageVolSize' << size.toString()
     }
 
     /**

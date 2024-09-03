@@ -211,7 +211,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                 '10']
 
         then:
-        cmd == expected
+        cmd  == expected
     }
 
     def "add specific extras"() {
