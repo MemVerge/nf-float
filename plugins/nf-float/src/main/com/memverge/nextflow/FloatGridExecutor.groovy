@@ -40,7 +40,6 @@ import java.nio.file.StandardCopyOption
 class FloatGridExecutor extends AbstractGridExecutor {
     private static final int DFT_MEM_GB = 1
     private static final long FUSION_MIN_VOL_SIZE = 80
-    private static final long MIN_VOL_SIZE = 40
     private static final long DISK_INPUT_FACTOR = 5
 
     private FloatJobs _floatJobs
@@ -403,8 +402,8 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return cmd
     }
 
-    private void addVolSize(List<String> cmd, TaskRun task) {
-        long size = MIN_VOL_SIZE
+    void addVolSize(List<String> cmd, TaskRun task) {
+        long size = FloatConf.MIN_VOL_SIZE
 
         def disk = task.config.getDisk()
         if (disk) {
@@ -413,9 +412,11 @@ class FloatGridExecutor extends AbstractGridExecutor {
         if (isFusionEnabled()) {
             size = Math.max(size, FUSION_MIN_VOL_SIZE)
         }
-        long inputSizeGB =  (long)(getInputFileSize(task) / 1024 / 1024 / 1024)
-        long minDiskSizeBasedOnInput = inputSizeGB * DISK_INPUT_FACTOR
-        size = Math.max(size, minDiskSizeBasedOnInput)
+        if (task.scratch) {
+            double inputSizeGB =  (double)(getInputFileSize(task)) / 1024 / 1024 / 1024
+            long minDiskSizeBasedOnInput = Math.round(inputSizeGB * DISK_INPUT_FACTOR)
+            size = Math.max(size, minDiskSizeBasedOnInput)
+        }
         cmd << '--imageVolSize' << size.toString()
     }
 

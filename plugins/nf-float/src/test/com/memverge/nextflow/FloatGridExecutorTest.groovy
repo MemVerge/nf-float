@@ -78,7 +78,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         given:
         final exec = newTestExecutor()
         exec.floatJobs.updateJob(FloatJob.parse(
-            """
+                """
                   id: a
                   customTags:
                       nf-job-id: tJob-1
@@ -211,7 +211,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
                 '10']
 
         then:
-        cmd  == expected
+        cmd.join(' ') == expected.join(' ')
     }
 
     def "add specific extras"() {
@@ -421,10 +421,10 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use time directive"() {
         given:
         final exec = newTestExecutor([
-                float: [address: addr,
-                        username: user,
-                        password: pass,
-                        nfs: nfs,
+                float: [address         : addr,
+                        username        : user,
+                        password        : pass,
+                        nfs             : nfs,
                         ignoreTimeFactor: false]
         ])
         final task = newTask(exec, 0, new TaskConfig(
@@ -442,12 +442,12 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "use timeout factor"() {
         given:
         final exec = newTestExecutor(
-                [float: [address   : addr,
-                         username  : user,
-                         password  : pass,
-                         nfs       : nfs,
+                [float: [address         : addr,
+                         username        : user,
+                         password        : pass,
+                         nfs             : nfs,
                          ignoreTimeFactor: false,
-                         timeFactor: 1.1]])
+                         timeFactor      : 1.1]])
         final task = newTask(exec, 0, new TaskConfig(
                 container: image,
                 time: '1h',
@@ -629,7 +629,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         when:
         final count = taskMap.size()
         // update a list of the task status
-        for ( def entry : taskMap.entrySet()) {
+        for (def entry : taskMap.entrySet()) {
             exec.floatJobs.updateJob(FloatJob.parse(taskStatus(entry.key, entry.value)))
         }
         def res = exec.parseQueueStatus("")
@@ -691,5 +691,44 @@ class FloatGridExecutorTest extends FloatBaseTest {
         setEnv('MMC_ADDRESS')
         setEnv('MMC_USERNAME')
         setEnv('MMC_PASSWORD')
+    }
+
+    def "get disk size when scratch is not enabled"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, 0)
+
+        when:
+        List<String> cmd = []
+        exec.addVolSize(cmd, task)
+
+        then:
+        cmd.join(' ') == "--imageVolSize ${FloatConf.MIN_VOL_SIZE}"
+    }
+
+    def "get disk size when specified in task"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, 0, new TaskConfig(disk: '18.GB'))
+
+        when:
+        List<String> cmd = []
+        exec.addVolSize(cmd, task)
+
+        then:
+        cmd.join(' ') == "--imageVolSize 18"
+    }
+
+    def "get disk size when specified size is smaller than min"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, 0, new TaskConfig(disk: '2.GB'))
+
+        when:
+        List<String> cmd = []
+        exec.addVolSize(cmd, task)
+
+        then:
+        cmd.join(' ') == "--imageVolSize ${FloatConf.MIN_VOL_SIZE}"
     }
 }

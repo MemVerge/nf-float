@@ -40,6 +40,7 @@ class FloatConf {
     static final String NF_TASK_NAME = 'nextflow-io-task-name'
     static final String FLOAT_INPUT_SIZE = 'input-size'
     static final String FLOAT_JOB_KIND = 'job-kind'
+    static final long MIN_VOL_SIZE = 6
     static final int DFT_MAX_CPU_FACTOR = 4
     static final int DFT_MAX_MEM_FACTOR = 4
 
