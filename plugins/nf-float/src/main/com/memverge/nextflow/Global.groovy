@@ -64,6 +64,31 @@ class AWSCred {
         return opts.join(",")
     }
 
+    private static String getS3UserSecretKey(String runName) {
+        return "AWS_ACCESS_KEY_ID_${runName.toUpperCase()}"
+    }
+
+    private static String getS3PassSecretKey(String runName) {
+        return "AWS_SECRET_ACCESS_KEY_${runName.toUpperCase()}"
+    }
+
+    private static String getS3tokenSecretKey(String runName) {
+        return "AWS_SESSION_TOKEN_${runName.toUpperCase()}"
+    }
+
+    Map<String, String> getRunSecretsMap(String runName) {
+        def ret = new HashMap<String, String>()
+        if (isValid()) {
+            ret.put(getS3UserSecretKey(runName), accessKey)
+            ret.put(getS3PassSecretKey(runName), secretKey)
+            if (token) {
+                ret.put(getS3tokenSecretKey(runName), token)
+            }
+        }
+        return ret
+    }
+
+
     def updateMap(Map map) {
         if (!isValid()) {
             return map
@@ -79,19 +104,35 @@ class AWSCred {
         return map
     }
 
-    Map<String, String> updateEnvMap(Map map) {
+    Map<String, String> updateEnvMap(Map map, String runName) {
         if (!isValid()) {
             return map
         }
         if (hasAllKeyCaseInsensitive(map, ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"])) {
             return map
         }
-        map.put("AWS_ACCESS_KEY_ID", accessKey)
-        map.put("AWS_SECRET_ACCESS_KEY", secretKey)
+        map.put("AWS_ACCESS_KEY_ID", "{secret:${getS3UserSecretKey(runName)}}")
+        map.put("AWS_SECRET_ACCESS_KEY", "{secret:${getS3PassSecretKey(runName)}}")
         if (token) {
-            map.put("AWS_SESSION_TOKEN", token)
+            map.put("AWS_SESSION_TOKEN", "{secret:${getS3tokenSecretKey(runName)}}")
         }
         return map
+    }
+
+    private static String getExportCmd(String secretName) {
+        return "\$(/opt/memverge/bin/float secret get $secretName -a \$FLOAT_ADDR)"
+    }
+
+    String getExportS3CredScript(String runName) {
+        def ret = ""
+        if (isValid()) {
+            ret = "export AWS_ACCESS_KEY_ID=${getExportCmd(getS3UserSecretKey(runName))}\n"
+            ret += "export AWS_SECRET_ACCESS_KEY=${getExportCmd(getS3PassSecretKey(runName))}\n"
+            if (token) {
+                ret += "export AWS_SESSION_TOKEN=${getExportCmd(getS3tokenSecretKey(runName))}\n"
+            }
+        }
+        return ret
     }
 
     List<String> getOpts() {
@@ -118,7 +159,6 @@ class AWSCred {
         return matched == expectedSize
     }
 }
-
 
 
 /**

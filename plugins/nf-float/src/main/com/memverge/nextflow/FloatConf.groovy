@@ -230,11 +230,19 @@ class FloatConf {
         return ret
     }
 
+    List<List<String>> getCliPrefixes() {
+        return this.addresses.collect{ getCliPrefixOf(it)}
+    }
+
     List<String> getCliPrefix(TaskId id) {
         if (id == null) {
             id = new TaskId(0)
         }
         final address = addresses[id.intValue() % (addresses.size())]
+        return getCliPrefixOf(address)
+    }
+
+    private List<String> getCliPrefixOf(String address) {
         validate()
 
         def bin = FloatBin.get(address)
