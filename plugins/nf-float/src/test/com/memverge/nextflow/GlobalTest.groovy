@@ -138,13 +138,13 @@ class GlobalTest extends FloatBaseTest {
 
         when:
         def res = Global.getAwsCredentials(config)
-        def envMap = res.updateEnvMap([:])
+        def envMap = res.updateEnvMap([:], "banana")
 
         then:
         res.isValid() == true
-        envMap['AWS_ACCESS_KEY_ID'] == "A"
-        envMap['AWS_SECRET_ACCESS_KEY'] == "B"
-        envMap['AWS_SESSION_TOKEN'] == "C"
+        envMap['AWS_ACCESS_KEY_ID'] == "{secret:AWS_ACCESS_KEY_ID_BANANA}"
+        envMap['AWS_SECRET_ACCESS_KEY'] == "{secret:AWS_SECRET_ACCESS_KEY_BANANA}"
+        envMap['AWS_SESSION_TOKEN'] == "{secret:AWS_SESSION_TOKEN_BANANA}"
 
         cleanup:
         clearAwsEnvs()

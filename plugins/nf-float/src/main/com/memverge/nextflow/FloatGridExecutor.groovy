@@ -62,6 +62,35 @@ class FloatGridExecutor extends AbstractGridExecutor {
         super.register()
         uploadBinDir()
         syncFloatBin()
+        setSecrets()
+    }
+
+    void shutdown() {
+        deleteSecrets()
+        super.shutdown()
+    }
+
+    private void setSecrets() {
+        floatConf.getCliPrefixes().each { prefix ->
+            for (def entry : floatConf.s3cred.getRunSecretsMap(getRunName())) {
+                def cmd = prefix.collect(it -> it)
+                cmd << "secret" << "set" << entry.key << entry.value
+                def res = Global.execute(cmd)
+                log.info "[FLOAT] set secret ${entry.key}, $res"
+            }
+        }
+
+    }
+
+    private void deleteSecrets() {
+        floatConf.getCliPrefixes().each { prefix ->
+            for (def entry : floatConf.s3cred.getRunSecretsMap(getRunName())) {
+                def cmd = prefix.collect(it -> it)
+                cmd << "secret" << "unset" << entry.key
+                def res = Global.execute(cmd)
+                log.info "[FLOAT] delete secret ${entry.key}, $res"
+            }
+        }
     }
 
     @Override
@@ -96,6 +125,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
         if (floatConf.s3cred.isValid()) {
             // if we have s3 credential, make sure aws cli is available in path
+            result += floatConf.s3cred.getExportS3CredScript(getRunName())
             result += "export PATH=\$PATH:/opt/aws/dist\n"
             result += "export LD_LIBRARY_PATH=\$LIBRARY_PATH:/opt/aws/dist\n"
         }
@@ -270,7 +300,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
         def ret = isFusionEnabled()
                 ? handler.fusionLauncher().fusionEnv()
                 : [:]
-        return floatConf.s3cred.updateEnvMap(ret)
+        return ret
     }
 
     String getRunName() {
@@ -413,7 +443,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
             size = Math.max(size, FUSION_MIN_VOL_SIZE)
         }
         if (task.scratch) {
-            double inputSizeGB =  (double)(getInputFileSize(task)) / 1024 / 1024 / 1024
+            double inputSizeGB = (double) (getInputFileSize(task)) / 1024 / 1024 / 1024
             long minDiskSizeBasedOnInput = Math.round(inputSizeGB * DISK_INPUT_FACTOR)
             size = Math.max(size, minDiskSizeBasedOnInput)
         }
