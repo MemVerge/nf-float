@@ -105,6 +105,9 @@ class FloatJob {
         ret.status = FloatStatus.of(status)
         ret.floatJobID = floatID
         ret.rc = rc
+        if (!ret.nfJobID) {
+            log.warn "[FLOAT] failed to parse nfJobID from: ${input}"
+        }
         return ret
     }
 
