@@ -58,6 +58,17 @@ class FloatGridExecutorTest extends FloatBaseTest {
         job.status == FloatStatus.PENDING
     }
 
+    def "parse job id failed"() {
+        given:
+        def exec = newTestExecutor()
+
+        when:
+        final out = "Error: open abc.sh: no such file or directory"
+
+        then:
+        exec.parseJobId(out) == ""
+    }
+
     def "kill command"() {
         given:
         def exec = newTestExecutor()
