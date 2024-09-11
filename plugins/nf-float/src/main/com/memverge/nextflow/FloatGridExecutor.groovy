@@ -103,14 +103,14 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
     protected BashWrapperBuilder createBashWrapperBuilder(TaskRun task) {
         final bean = new TaskBean(task)
+        if (bean.scratch == null) {
+            // default scratch to true
+            bean.scratch = true
+            bean.stageInMode = 'copy'
+        }
         final strategy = new FloatFileCopyStrategy(floatConf, bean)
         // creates the wrapper script
         final builder = new BashWrapperBuilder(bean, strategy)
-        if (builder.scratch == null) {
-            // default scratch to true
-            builder.scratch = true
-            builder.stageInMode = 'copy'
-        }
         // job directives headers
         builder.headerScript = getHeaderScript(task)
         return builder
