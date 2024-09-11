@@ -439,15 +439,18 @@ class FloatGridExecutor extends AbstractGridExecutor {
         if (disk) {
             size = Math.max(size, disk.toGiga())
         }
-        if (isFusionEnabled()) {
+        final fusionEnabled = isFusionEnabled()
+        if (fusionEnabled) {
             size = Math.max(size, FUSION_MIN_VOL_SIZE)
         }
-        if (task.scratch) {
+        if (task.scratch || fusionEnabled) {
             double inputSizeGB = (double) (getInputFileSize(task)) / 1024 / 1024 / 1024
             long minDiskSizeBasedOnInput = Math.round(inputSizeGB * DISK_INPUT_FACTOR)
             size = Math.max(size, minDiskSizeBasedOnInput)
         }
-        cmd << '--imageVolSize' << size.toString()
+        if (size > FloatConf.MIN_VOL_SIZE) {
+            cmd << '--imageVolSize' << size.toString()
+        }
     }
 
     /**

@@ -121,7 +121,6 @@ class FloatBaseTest extends BaseTest {
                 '--customTag', "${FloatConf.NF_SESSION_ID}:uuid-$uuid",
                 '--customTag', "${FloatConf.NF_TASK_NAME}:foo--$taskIDStr-",
                 '--customTag', "${FloatConf.FLOAT_INPUT_SIZE}:0",
-                '--customTag', "${FloatConf.NF_RUN_NAME}:test-run",
-                '--imageVolSize', FloatConf.MIN_VOL_SIZE]
+                '--customTag', "${FloatConf.NF_RUN_NAME}:test-run"]
     }
 }

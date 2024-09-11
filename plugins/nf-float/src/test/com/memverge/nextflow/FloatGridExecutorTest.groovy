@@ -714,7 +714,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         exec.addVolSize(cmd, task)
 
         then:
-        cmd.join(' ') == "--imageVolSize ${FloatConf.MIN_VOL_SIZE}"
+        cmd.join(' ') == ""
     }
 
     def "get disk size when specified in task"() {
@@ -740,6 +740,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         exec.addVolSize(cmd, task)
 
         then:
-        cmd.join(' ') == "--imageVolSize ${FloatConf.MIN_VOL_SIZE}"
+        // do not specify size because it's smaller than min
+        cmd.join(' ') == ""
     }
 }
