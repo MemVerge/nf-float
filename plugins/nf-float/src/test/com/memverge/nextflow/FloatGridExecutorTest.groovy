@@ -743,4 +743,32 @@ class FloatGridExecutorTest extends FloatBaseTest {
         // do not specify size because it's smaller than min
         cmd.join(' ') == ""
     }
+
+    def "default scratch to true, stage in mode to copy"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, 0)
+
+        when:
+        def builder = exec.createBashWrapperBuilder(task)
+
+        then:
+        builder.scratch == true
+        builder.stageInMode == 'copy'
+    }
+
+    def "use custom scratch and stage in mode"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, 0, new TaskConfig(
+                scratch: false,
+                stageInMode: 'link'))
+
+        when:
+        def builder = exec.createBashWrapperBuilder(task)
+
+        then:
+        builder.scratch == false
+        builder.stageInMode == 'link'
+    }
 }

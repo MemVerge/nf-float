@@ -265,12 +265,14 @@ Tests done for s3 work directory support:
 * the test profile of nf-core/rnaseq
 * the test profile of nf-core/sarek
 
-You can also enable `scrach = true` in the process scope.  When `scratch` is enabled, the plugin will
-use the scratch space of the worker node to store the task files.  This is useful when the task files
-are large and the network bandwidth is limited.
+By default, `scratch` option is set to true, `stageInMode` is set to `copy`.
+When `scratch` is enabled, the plugin will use the scratch space of the worker node to store the task 
+files.  This is useful when the task files are large and the network bandwidth is limited.
 
-When `scratch` is enabled, it's strongly recommended to set `stageInMode = 'copy'` in the process scope.
-This will make sure the task files are copied to the scratch space before the task starts.
+When `scratch` is enabled manually, it's strongly recommended to set `stageInMode = 'copy'` in the 
+process scope.  This will make sure the task files are copied to the scratch space before the task starts.
+
+If you want to disable `scratch`, please set `scratch = false` in the process scope.
 
 Because the scratch space is local, you need to add `disk = '100 GB'` to make sure the task has enough
 space to run.  The plugin will also check the total input size of the task and make sure the disk space
