@@ -201,6 +201,17 @@ aws {
 }
 ```
 
+Due to a compatibility issue between MMC and AWS, when using the us-east-1 region, 
+you must explicitly specify the endpoint as `https://s3.us-east-1.amazonaws.com`. 
+For example:
+```groovy
+aws {
+    client {
+        endpoint = 'https://s3.us-east-1.amazonaws.com'
+    }
+}
+```
+
 If you are sure that the workflow file is properly composed, it's recommended to
 set proper error strategy and retry limit in the process scope to make sure
 the workflow can be completed.

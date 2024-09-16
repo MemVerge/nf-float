@@ -132,6 +132,24 @@ class FloatConfTest extends BaseTest {
                 's3://bucket:/bucket'
     }
 
+    def "get s3 data volume with endpoint"() {
+        given:
+        def conf = [
+                aws: [
+                        accessKey: 'ak0',
+                        secretKey: 'sk0',
+                        client   : [
+                                endpoint: 's3.ep']]]
+        when:
+        def fConf = FloatConf.getConf(conf)
+        def workDir = new URI('s3://bucket/work/dir')
+        def volume = fConf.getWorkDirVol(workDir)
+
+        then:
+        volume == '[mode=rw,accesskey=ak0,secret=sk0,endpoint=https://s3.ep]' +
+                's3://bucket:/bucket'
+    }
+
     def "get s3 credentials from env 0"() {
         given:
         setEnv('AWS_ACCESS_KEY_ID', 'aak_id')
@@ -288,7 +306,7 @@ class FloatConfTest extends BaseTest {
 
 
 class DataVolumeTest extends BaseTest {
-    def "parse nfs volume" (){
+    def "parse nfs volume"() {
         given:
         def nfs = "nfs://1.2.3.4/my/dir:/mnt/point"
 
@@ -300,7 +318,7 @@ class DataVolumeTest extends BaseTest {
         vol.toString() == nfs
     }
 
-    def "parse s3 without credentials" () {
+    def "parse s3 without credentials"() {
         given:
         def s3 = "[mode=rw]s3://1.2.3.4/my/dir:/mnt/point"
 
@@ -312,7 +330,7 @@ class DataVolumeTest extends BaseTest {
         vol.toString() == s3
     }
 
-    def "existing s3 credentials" () {
+    def "existing s3 credentials"() {
         given:
         def s3 = "[accessKey=a,mode=rw,secret=s]s3://1.2.3.4/my/dir:/mnt/point"
 
@@ -325,7 +343,7 @@ class DataVolumeTest extends BaseTest {
         vol.toString() == s3
     }
 
-    def "update s3 credentials" () {
+    def "update s3 credentials"() {
         given:
         def s3 = "[secret=s]s3://1.2.3.4/my/dir:/mnt/point"
 
@@ -338,7 +356,7 @@ class DataVolumeTest extends BaseTest {
         vol.toString() == "[accesskey=x,mode=rw,secret=y]s3://1.2.3.4/my/dir:/mnt/point"
     }
 
-    def "update s3 credentials" () {
+    def "update s3 credentials"() {
         given:
         def s3 = "[mode=rw,secret=s]s3://1.2.3.4/my/dir:/mnt/point"
 
