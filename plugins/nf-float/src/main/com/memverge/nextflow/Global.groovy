@@ -48,11 +48,24 @@ class AWSCred {
     String accessKey
     String secretKey
     String token
+    String endpoint
 
     AWSCred(String accessKey, String secretKey, String token = null) {
         this.accessKey = accessKey
         this.secretKey = secretKey
         this.token = token
+    }
+
+    def SetEndpoint(Object object) {
+        if (!object instanceof String) {
+            return
+        }
+        String endpoint = object as String
+        endpoint = endpoint.trim()
+        if (!endpoint.startsWith("https://")) {
+            endpoint = "https://" + endpoint
+        }
+        this.endpoint = endpoint
     }
 
     Boolean isValid() {
@@ -139,6 +152,9 @@ class AWSCred {
         def ret = ["accesskey=${accessKey}", "secret=${secretKey}"]
         if (token) {
             ret.add("token=${token}")
+        }
+        if (endpoint) {
+            ret.add("endpoint=${endpoint}")
         }
         return ret
     }
@@ -296,16 +312,22 @@ class Global {
         AWSCred ret
 
         if (config && config.aws instanceof Map) {
-            key = ((Map) config.aws).accessKey
-            secret = ((Map) config.aws).secretKey
-            token = ((Map) config.aws).token
+            final awsConfig = config.aws as Map
+            key = awsConfig.accessKey
+            secret = awsConfig.secretKey
+            token = awsConfig.token
 
             ret = new AWSCred(key, secret, token)
+            if (awsConfig.client instanceof Map) {
+                final awsCliConfig = awsConfig.client as Map
+                if (awsCliConfig.endpoint) {
+                    ret.SetEndpoint(awsCliConfig.endpoint)
+                }
+            }
             if (ret.isValid()) {
                 log.debug "[FLOAT] Using AWS credentials defined in nextflow config file"
                 return ret
             }
-
         }
 
         // as define by amazon doc
