@@ -747,6 +747,9 @@ class FloatGridExecutorTest extends FloatBaseTest {
     def "default scratch to true, stage in mode to copy"() {
         given:
         final exec = newTestExecutor()
+        URL workDirUrl = new URL("https://work/dir");
+        URI workDirUri = workDirUrl.toURI();
+        exec.session.workDir = Paths.get(workDirUri)
         final task = newTask(exec, 0)
 
         when:
@@ -755,6 +758,36 @@ class FloatGridExecutorTest extends FloatBaseTest {
         then:
         builder.scratch == true
         builder.stageInMode == 'copy'
+    }
+
+    def "default scratch to false for local path"() {
+        given:
+        final exec = newTestExecutor()
+        exec.session.workDir = Paths.get('/local/workDir')
+        final task = newTask(exec, 0)
+
+        when:
+        def builder = exec.createBashWrapperBuilder(task)
+
+        then:
+        builder.scratch == null
+        builder.stageInMode == null
+    }
+
+    def "default scratch to false for local url"() {
+        given:
+        final exec = newTestExecutor()
+        URL workDirUrl = new URL("file:///work/dir");
+        URI workDirUri = workDirUrl.toURI();
+        exec.session.workDir = Paths.get(workDirUri)
+        final task = newTask(exec, 0)
+
+        when:
+        def builder = exec.createBashWrapperBuilder(task)
+
+        then:
+        builder.scratch == null
+        builder.stageInMode == null
     }
 
     def "use custom scratch and stage in mode"() {
