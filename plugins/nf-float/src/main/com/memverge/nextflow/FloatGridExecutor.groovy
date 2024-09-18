@@ -103,7 +103,7 @@ class FloatGridExecutor extends AbstractGridExecutor {
 
     protected BashWrapperBuilder createBashWrapperBuilder(TaskRun task) {
         final bean = new TaskBean(task)
-        if (bean.scratch == null) {
+        if (useNetworkWorkdir() && bean.scratch == null) {
             // default scratch to true
             bean.scratch = true
             bean.stageInMode = 'copy'
@@ -274,6 +274,10 @@ class FloatGridExecutor extends AbstractGridExecutor {
         if (task.config.image) {
             warnDeprecated('image', '`container` directive')
         }
+    }
+
+    private useNetworkWorkdir() {
+        return workDir.getScheme() != "file"
     }
 
     private List<String> getMountVols(TaskRun task) {

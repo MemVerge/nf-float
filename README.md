@@ -227,6 +227,9 @@ process {
 
 To enable s3 as work directory, user need to set work directory to a s3 bucket.
 Note `token` is not supported.
+Note `scratch` is enabled by default.  If you want to disable it, please set `scratch = false`.
+`stageInMode` is set to `copy` by default.  If you want to disable it, please set `stageInMode = 'link'`.
+
 ```groovy
 plugins {
     id 'nf-float'
@@ -238,8 +241,6 @@ process {
     executor = 'float'
     container = 'fedora/fedora-minimal'
     disk = '120 GB'
-    scratch = true
-    stageInMode = 'copy'
 }
 
 podman.registry = 'quay.io'
@@ -276,7 +277,8 @@ Tests done for s3 work directory support:
 * the test profile of nf-core/rnaseq
 * the test profile of nf-core/sarek
 
-By default, `scratch` option is set to true, `stageInMode` is set to `copy`.
+By default, `scratch` option is set to true, `stageInMode` is set to `copy` for network file system
+such as `s3`.
 When `scratch` is enabled, the plugin will use the scratch space of the worker node to store the task 
 files.  This is useful when the task files are large and the network bandwidth is limited.
 
