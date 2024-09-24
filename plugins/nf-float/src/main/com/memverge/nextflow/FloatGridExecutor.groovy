@@ -131,8 +131,13 @@ class FloatGridExecutor extends AbstractGridExecutor {
         if (floatConf.s3cred.isValid()) {
             // if we have s3 credential, make sure aws cli is available in path
             result += floatConf.s3cred.getExportS3CredScript(getRunName())
-            result += "export PATH=\$PATH:/opt/aws/dist\n"
-            result += "export LD_LIBRARY_PATH=\$LIBRARY_PATH:/opt/aws/dist\n"
+            result += '''
+if ! command -v aws >/dev/null 2>&1 && ! type aws >/dev/null 2>&1; then
+    aws() {
+        LD_LIBRARY_PATH=/opt/aws/dist:\$LD_LIBRARY_PATH /opt/aws/dist/aws \$@
+    }
+fi
+'''
         }
         return result
     }
