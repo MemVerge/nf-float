@@ -1,9 +1,5 @@
 package com.memverge.nextflow
 
-import nextflow.processor.TaskConfig
-
-import java.nio.file.Paths
-
 class GlobalTest extends FloatBaseTest {
     def "get env var. of any names"() {
         given:
@@ -68,7 +64,7 @@ class GlobalTest extends FloatBaseTest {
         given:
         setEnv("AWS_ACCESS_KEY", "A")
         setEnv("AWS_SECRET_KEY", "B")
-        def config = [aws:[]]
+        def config = [aws: []]
 
         when:
         def res = Global.getAwsCredentials(config)
@@ -97,7 +93,7 @@ class GlobalTest extends FloatBaseTest {
     def "retrieve aws credentials from system env, with token"() {
         given:
         setAwsEnvs()
-        def config = [aws:[]]
+        def config = [aws: []]
 
         when:
         def res = Global.getAwsCredentials(config)
@@ -114,11 +110,11 @@ class GlobalTest extends FloatBaseTest {
     def "update arg map with aws credential"() {
         given:
         setAwsEnvs()
-        def config = [aws:[]]
+        def config = [aws: []]
 
         when:
         def res = Global.getAwsCredentials(config)
-        def argMap = res.updateMap(['banana':'apple'])
+        def argMap = res.updateMap(['banana': 'apple'])
 
         then:
         res.isValid() == true
@@ -134,7 +130,7 @@ class GlobalTest extends FloatBaseTest {
     def "update env map with aws credential"() {
         given:
         setAwsEnvs()
-        def config = [aws:[]]
+        def config = [aws: []]
 
         when:
         def res = Global.getAwsCredentials(config)
@@ -160,7 +156,7 @@ class GlobalTest extends FloatBaseTest {
         def script = exec.getHeaderScript(task)
 
         then:
-        script.contains("PATH:/opt/aws/dist")
+        script.contains('/opt/aws/dist:$LD_LIBRARY_PATH')
 
         cleanup:
         clearAwsEnvs()
