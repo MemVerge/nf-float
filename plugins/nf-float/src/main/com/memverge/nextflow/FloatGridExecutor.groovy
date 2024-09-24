@@ -441,6 +441,13 @@ class FloatGridExecutor extends AbstractGridExecutor {
         return cmd
     }
 
+    private boolean shouldCheckImage(TaskRun task) {
+        final scratch = task.scratch
+        return useNetworkWorkdir() && scratch == null ||
+                scratch == true ||
+                isFusionEnabled()
+    }
+
     void addVolSize(List<String> cmd, TaskRun task) {
         long size = FloatConf.MIN_VOL_SIZE
 
@@ -448,11 +455,10 @@ class FloatGridExecutor extends AbstractGridExecutor {
         if (disk) {
             size = Math.max(size, disk.toGiga())
         }
-        final fusionEnabled = isFusionEnabled()
-        if (fusionEnabled) {
+        if (isFusionEnabled()) {
             size = Math.max(size, FUSION_MIN_VOL_SIZE)
         }
-        if (task.scratch || fusionEnabled) {
+        if (shouldCheckImage(task)) {
             double inputSizeGB = (double) (getInputFileSize(task)) / 1024 / 1024 / 1024
             long minDiskSizeBasedOnInput = Math.round(inputSizeGB * DISK_INPUT_FACTOR)
             size = Math.max(size, minDiskSizeBasedOnInput)
