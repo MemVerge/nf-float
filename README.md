@@ -193,7 +193,7 @@ based on your environment and the workload.  Here is an example:
 aws {
   // recommended aws client settings
   client {
-    maxConnections = 200 // Increase this number to allow large concurrency
+    maxConnections = 20 // Increase this number to allow large concurrency
     maxErrorRetry = 10 // Increase the number of retries if needed
     connectionTimeout = 60000 // timeout in milliseconds, 60 seconds
     socketTimeout = 60000     // timeout in milliseconds, 60 seconds
