@@ -1,19 +1,46 @@
-# nf-float plugin
+# nf-float plugin<!-- omit in toc -->
 
 This project contains the Nextflow plugin for MemVerge Memory Machine Cloud 
 (aka. float).
 
 `FloatGridExecutor` extends the `AbstractGridExecutor` and tells Nextflow how
-to run the workload with `float` command line.  
+to run the workload with `float` [command line](https://docs.memverge.com/MMCloud/latest/User%20Guide/Reference%20Guides/cli_summary/#float-submit).  
 
 Please make sure your nextflow node shares the same work directory with the
 worker nodes/containers.  It should be a shared file system such as NFS or S3FS.
 
 Otherwise, the worker nodes won't be able to see the task files.
 
-## License
+## License<!-- omit in toc -->
 
 [Apache License Version 2.0](./LICENSE)
+
+## Table of Contents<!-- omit in toc -->
+
+- [Installation](#installation)
+  - [Install Nextflow](#install-nextflow)
+  - [Install nf-float plugin](#install-nf-float-plugin)
+    - [Auto Install](#auto-install)
+    - [Manual Install](#manual-install)
+- [Configuration](#configuration)
+  - [Configure with environment variables](#configure-with-environment-variables)
+  - [Configure with Nextflow secrets](#configure-with-nextflow-secrets)
+  - [Configuration best practices](#configuration-best-practices)
+  - [Configure s3 work directory](#configure-s3-work-directory)
+  - [Configure s3fs work directory](#configure-s3fs-work-directory)
+  - [Configure fusion FS over s3](#configure-fusion-fs-over-s3)
+  - [Configure VM creation and migration policies](#configure-vm-creation-and-migration-policies)
+  - [Configure additional CLI options](#configure-additional-cli-options)
+    - [Common parameters](#common-parameters)
+    - [Unique parameters](#unique-parameters)
+    - [Common and unique parameters](#common-and-unique-parameters)
+    - [Common and overridden parameters](#common-and-overridden-parameters)
+- [Process definition](#process-definition)
+- [Run the Workflow](#run-the-workflow)
+- [Unit testing](#unit-testing)
+- [Testing and debugging](#testing-and-debugging)
+- [Package](#package)
+
 
 ## Installation
 
@@ -124,7 +151,7 @@ process {
 * In the `process` scope, we specify `executor = 'float'` to tell Nextflow to execute
   tasks with the Float executor.
 * In the `process` scope, we can use `ext.float = 'xxx'` to pass extra options to the 
-  float command line.  It works the same as `extra`.
+  [float command line](https://docs.memverge.com/MMCloud/latest/User%20Guide/Reference%20Guides/cli_summary/#float-submit). It works the same as `extra`. See the [configure additional options](#configure-additional-cli-options) section for examples.
 
 Available `float` config options: 
 
@@ -132,8 +159,8 @@ Available `float` config options:
 * `username`, `password`: the credentials for your operation center
 * `nfs`: the location of the NFS (if using NFS for the work directory)
 * `migratePolicy`: the migration policy used by WaveRider, specified as a map.  Refer to
-              the CLI usage for the list of available options.
-* `vmPolicy`: the VM creation policy, specified as a map.  Refer to the CLI usage
+              the [CLI usage](https://docs.memverge.com/MMCloud/latest/User%20Guide/Reference%20Guides/cli_summary/#float-submit) for the list of available options.
+* `vmPolicy`: the VM creation policy, specified as a map.  Refer to the [CLI usage](https://docs.memverge.com/MMCloud/latest/User%20Guide/Reference%20Guides/cli_summary/#float-submit)
               for the list of available options.
 * `ignoreTimeLimits`: a boolean.  default to true.  If set to true, the plugin will ignore
   the time limit of the task.
@@ -144,8 +171,8 @@ Available `float` config options:
   to `maxCpuFactor` * `cpus` of the task.
 * `maxMemoryFactor`: a float number.  default to 4.  The maximum memory of the instance is set
   to `maxMemoryFactor` * `memory` of the task.
-* `commonExtra`: allows the user to specify other submit CLI options.  This parameter
-                 will be appended to every float submit command.
+* `commonExtra`: allows the user to specify other `float submit` [CLI options](https://docs.memverge.com/MMCloud/latest/User%20Guide/Reference%20Guides/cli_summary/#float-submit).  This parameter will be appended to every float submit command. See the [configure additional options](#configure-additional-cli-options) section for examples.
+* `extraOptions`: allows the user to provide arguments for the `--extraOptions` parameter of the [float CLI](https://docs.memverge.com/MMCloud/latest/User%20Guide/Reference%20Guides/cli_summary/#float-submit).
 * `maxParallelTransfers`: an integer.  default to 4.  The maximum number of parallel transfers
   for the task happened on the worker node.  Note the actual concurrency is the minimum of this 
   value and the number of available cores.
@@ -401,6 +428,90 @@ float {
         mem: [lowerBoundRatio: 20, upperBoundRatio: 90]
     ]
 }
+```
+
+### Configure additional CLI options
+
+Additional CLI options for job submission through the `float submit` [command](https://docs.memverge.com/MMCloud/latest/User%20Guide/Reference%20Guides/cli_summary/#float-submit) are constructed in following steps.
+
+1. Start with an empty list [] of parameters.
+2. Add `commonExtra` defined under the `float` scope.
+3. Add `extra` defined under the process configuration scope.
+4. Add `ext.float` defined under the process configuration scope.
+5. Concatenate the list of parameters into a string and pass to the CLI.
+
+Following sections describe how to configure additional CLI parameters in common use-cases.
+
+#### Common parameters
+
+```groovy
+float {
+    commonExtra = '--storage input-data' // Recommended
+}
+```
+
+Or,
+
+```groovy
+process {
+    extra = '--storage input-data' // Not recommended, see https://github.com/MemVerge/nf-float/issues/69
+}
+```
+
+#### Unique parameters
+
+```groovy
+process {
+
+    withName: 'PROCESS_A' {
+        ext.float = '--vmPolicy [onDemand=true]'
+    }
+
+    withName: 'PROCESS_B' {
+        ext.float = '--vmPolicy [spotOnly=true]'
+    }
+
+}
+```
+
+#### Common and unique parameters
+
+```groovy
+float {
+    commonExtra = '--storage input-data'
+}
+
+process {
+
+    withName: 'PROCESS_A' {
+        ext.float = '--vmPolicy [onDemand=true]'
+    } // Tasks for PROCESS_A will be submitted with '--storage input-data --vmPolicy [onDemand=true]'
+
+    withName: 'PROCESS_B' {
+        ext.float = '--vmPolicy [spotOnly=true]'
+    } // Tasks for PROCESS_B will be submitted with '--storage input-data --vmPolicy [spotOnly=true]'
+
+}
+```
+
+#### Common and overridden parameters
+
+```groovy
+float {
+    commonExtra = '--storage input-data'
+}
+
+process {
+    ext.float = '--migratePolicy [disable=false]'
+} // Nextflow produces an error if withName scopes are placed after ext.float in the same process scope
+
+process {
+
+    withName: 'PROCESS_A' {
+        ext.float = '--migratePolicy [disable=true]'
+    } // Tasks for PROCESS_A will be submitted with '--storage input-data --migratePolicy [disable=true]'
+
+} // Tasks for all other processes will be submitted with '--storage input-data --migratePolicy [disable=false]'
 ```
 
 ## Process definition
