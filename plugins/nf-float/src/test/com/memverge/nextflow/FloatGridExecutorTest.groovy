@@ -258,10 +258,29 @@ class FloatGridExecutorTest extends FloatBaseTest {
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
         final expected = submitCmd(
                 cpu: 1,
-                memory: 1) + ['-f', '-t', 'small']
+                memory: 2) + ['-f', '-t', 'small']
 
         then:
         cmd.join(' ') == expected.join(' ')
+    }
+
+    def "incorrect cpu and memory ratio"() {
+        given:
+        final exec = newTestExecutor(
+                [float: [address        : addr,
+                         maxCpuFactor   : 4,
+                         maxMemoryFactor: 4]])
+        final task = newTask(exec, 0, new TaskConfig(
+                cpus: 12,
+                memory: "4.GB",
+                container: 'fastp'
+        ))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+
+        then:
+        cmd.join(' ').contains("--cpu 12:48 --mem 24:96")
     }
 
     def "both common extra and specific extra"() {
@@ -568,7 +587,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd.join(' ').contains('--mem 1')
+        cmd.join(' ').contains('--mem 2')
     }
 
     def "use extra options"() {

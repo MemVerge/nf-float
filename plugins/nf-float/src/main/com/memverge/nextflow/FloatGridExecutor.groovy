@@ -403,7 +403,7 @@ fi
         int cpu = getCpu(task)
         int maxCpu = (floatConf.maxCpuFactor * cpu.doubleValue()).intValue()
         cmd << '--cpu' << "${cpu}:${maxCpu}".toString()
-        int memGiga = getMemory(task)
+        int memGiga = Math.max(getMemory(task), cpu * 2)
         int maxMemGiga = (floatConf.maxMemoryFactor * memGiga.doubleValue()).intValue()
         cmd << '--mem' << "${memGiga}:${maxMemGiga}".toString()
         cmd << '--job' << getScriptFilePath(handler, scriptFile)
