@@ -1,6 +1,6 @@
 Manifest-Version: 1.0
 Plugin-Class: com.memverge.nextflow.FloatPlugin
 Plugin-Id: nf-float
-Plugin-Version: 0.4.6
+Plugin-Version: 0.4.7
 Plugin-Provider: MemVerge Corp.
 Plugin-Requires: >=23.04.0
