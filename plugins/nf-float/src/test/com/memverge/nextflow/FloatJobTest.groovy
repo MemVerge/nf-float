@@ -127,6 +127,69 @@ class FloatJobTest extends Specification {
         job.status == FloatStatus.PENDING
     }
 
+    def "check job failed with NoAvailableHost"() {
+        given:
+        final out = """
+            id: uqaj8l6a407u88v0106ol
+            name: subread-3nyw14-r6a.2xlarge
+            workingHost: ""
+            category: failed
+            status: NoAvailableHost
+            cpu: 8
+            duration: 1h5m49s
+            queueTime: 0s
+            submitTime: "2025-06-20T09:09:34Z"
+            execTime: "2025-06-20T09:09:34Z"
+            endTime: "2025-06-20T10:15:23Z"
+            lastUpdate: "2025-06-20T10:15:23Z"
+            memGB: 64
+            scheduler: mmcloud
+            imageID: quay.io/biocontainers/subread:2.0.6--he4a0461_2
+            stdout: stdout.autosave
+            stderr: stderr.autosave
+            memUsed: 0.00 B
+            cpuMax: 24
+            memGBMax: 144
+            instanceType: r6a.2xlarge
+            coreHours: 0.6784628924888889
+            """.stripIndent().trim()
+
+        when:
+        final job = FloatJob.parse(out)
+
+        then:
+        ! job.isRunning()
+        job.status == FloatStatus.NOAVAILABLEHOST
+    }
+
+    def "check job failed with FailToExecute"() {
+        given:
+        final out = """
+            id: 3cfmkg882qn09q9o8jfkf
+            name: rseqc-2609uc-m5zn.3xlarge
+            workingHost: ""
+            category: failed
+            status: FailToExecute
+            cpu: 6
+            duration: 0s
+            queueTime: 0s
+            submitTime: "2025-06-20T09:13:54Z"
+            execTime: "2025-06-20T09:13:54Z"
+            endTime: "2025-06-20T09:13:55Z"
+            lastUpdate: "2025-06-20T09:13:55Z"
+            memGB: 36
+            cpuMax: 24
+            memGBMax: 144
+            """.stripIndent().trim()
+
+        when:
+        final job = FloatJob.parse(out)
+
+        then:
+        ! job.isRunning()
+        job.status == FloatStatus.ERROR
+    }
+
     def "get queue status"() {
         given:
         final out = """

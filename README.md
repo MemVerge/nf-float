@@ -26,6 +26,8 @@ Otherwise, the worker nodes won't be able to see the task files.
   - [Configure with environment variables](#configure-with-environment-variables)
   - [Configure with Nextflow secrets](#configure-with-nextflow-secrets)
   - [Configuration best practices](#configuration-best-practices)
+    - [S3](#s3)
+    - [errorStrategy](#errorstrategy)
   - [Configure s3 work directory](#configure-s3-work-directory)
   - [Configure s3fs work directory](#configure-s3fs-work-directory)
   - [Configure fusion FS over s3](#configure-fusion-fs-over-s3)
@@ -214,6 +216,8 @@ Unknown config secret 'MMC_USERNAME'
 
 ### Configuration best practices
 
+#### S3
+
 When you are using s3, it's recommended to update the aws client configurations
 based on your environment and the workload.  Here is an example:
 ```groovy
@@ -239,16 +243,33 @@ aws {
 }
 ```
 
+#### errorStrategy
+
 If you are sure that the workflow file is properly composed, it's recommended to
 set proper error strategy and retry limit in the process scope to make sure
 the workflow can be completed.
-Here is an example:
+
+Here is the recommended error strategy:
 ```groovy
 process {
-  errorStrategy='retry'
-  maxRetries=5  
+    errorStrategy = {
+        if ( task.exitStatus == 143 ) { // NoAvailableHost
+            sleep(Math.pow(2, task.attempt) * 2 * 60000 as long)
+            return 'retry'
+        }
+  
+        task.exitStatus in ((130..142) + 145 + 104 + 175)
+        ? 'retry'
+        : 'finish'
+    }
+    maxRetries = 5
 }
 ```
+
+This strategy increases max retries to 5 and generally adheres to the nf-core strategy.
+The addition is that for exit code 143 which represents NoAvailableHost resulting from no or 
+low availability of spot instances, Nextflow waits for 4, 8, 16, 32, 64 minutes for
+consecutive retries of a task.
 
 ### Configure s3 work directory
 

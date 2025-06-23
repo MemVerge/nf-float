@@ -24,6 +24,7 @@ enum FloatStatus {
     PENDING,
     RUNNING,
     DONE,
+    NOAVAILABLEHOST,
     ERROR,
     UNKNOWN,
 
@@ -46,7 +47,7 @@ enum FloatStatus {
             'CheckpointFailed' : ERROR,
             'WaitingForLicense': ERROR,
             'Timedout'         : ERROR,
-            'NoAvailableHost'  : ERROR,
+            'NoAvailableHost'  : NOAVAILABLEHOST,
             'Unknown'          : UNKNOWN,
     ]
 
@@ -58,12 +59,8 @@ enum FloatStatus {
         return this == PENDING || this == RUNNING
     }
 
-    boolean isFinished() {
-        return this == ERROR || this == DONE
-    }
-
-    boolean isError() {
-        return this == ERROR
+    boolean isDoneOrFailed() {
+        return this == DONE || this == ERROR || this == NOAVAILABLEHOST
     }
 }
 
@@ -125,8 +122,8 @@ class FloatJob {
         return status ? status.isRunning() : false
     }
 
-    boolean isFinished() {
-        return status ? status.isFinished() : false
+    boolean isDoneOrFailed() {
+        return status ? status.isDoneOrFailed() : false
     }
 
     static List<FloatJob> parseJobMap(String input) {
