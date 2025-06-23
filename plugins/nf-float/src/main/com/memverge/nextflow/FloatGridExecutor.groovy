@@ -632,6 +632,7 @@ fi
         STATUS_MAP.put(FloatStatus.PENDING, QueueStatus.PENDING)
         STATUS_MAP.put(FloatStatus.RUNNING, QueueStatus.RUNNING)
         STATUS_MAP.put(FloatStatus.DONE, QueueStatus.DONE)
+        STATUS_MAP.put(FloatStatus.NOAVAILABLEHOST, QueueStatus.ERROR)
         STATUS_MAP.put(FloatStatus.ERROR, QueueStatus.ERROR)
         STATUS_MAP.put(FloatStatus.UNKNOWN, QueueStatus.UNKNOWN)
     }

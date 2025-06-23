@@ -73,8 +73,8 @@ class FloatTaskHandler extends GridTaskHandler {
     boolean checkIfCompleted() {
         final FloatStatus st =  floatExecutor.getJobStatus(task)
         log.debug "got status ${st} for ${task.id} from float executor"
-        if (st.finished) {
-            status = COMPLETED
+        if (st.doneOrFailed) {
+            this.status = COMPLETED
             task.exitStatus = readExitStatus()
             if (task.exitStatus == null) {
                 log.debug "can't get ${task.id} exit status from file system"
@@ -82,11 +82,16 @@ class FloatTaskHandler extends GridTaskHandler {
             }
             log.debug "set ${task.id} exit status to ${task.exitStatus}"
             if (task.exitStatus == null) {
-                if (st.isError()) {
+                task.exitStatus = 0
+
+                if (st == FloatStatus.ERROR) {
                     task.exitStatus = 1
-                } else {
-                    task.exitStatus = 0
                 }
+
+                if (st == FloatStatus.NOAVAILABLEHOST) {
+                    task.exitStatus = 143
+                }
+
                 log.info "both .exitcode and rc are empty for ${task.id}," +
                         "set exit to ${task.exitStatus}"
             }

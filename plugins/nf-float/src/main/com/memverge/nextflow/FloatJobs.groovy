@@ -44,7 +44,7 @@ class FloatJobs {
     }
 
     TaskId getTaskID(String floatJobID) {
-        // go through the all float jobs to find the task id
+        // go through all float jobs to find the task id
         for (FloatJob job : nfJobID2FloatJob.values()) {
             if (job.floatJobID == floatJobID) {
                 // extract the task id from the nfJobID
@@ -74,7 +74,7 @@ class FloatJobs {
             log.error "[FLOAT] job nf Job ID is null or empty for job ${job.floatJobID}"
         } else {
             FloatJob existingJob = nfJobID2FloatJob.get(job.nfJobID)
-            if (existingJob != null && existingJob.finished) {
+            if (existingJob != null && existingJob.doneOrFailed) {
                 log.info "[FLOAT] job ${job.nfJobID} already finished, no need to update"
                 job = existingJob
             } else {
@@ -83,7 +83,7 @@ class FloatJobs {
                 }
                 nfJobID2FloatJob.put(job.nfJobID, job)
             }
-            if (job.finished) {
+            if (job.doneOrFailed) {
                 refreshWorkDir(job.nfJobID)
             }
         }
