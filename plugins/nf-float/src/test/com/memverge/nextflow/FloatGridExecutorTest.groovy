@@ -532,7 +532,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ').contains('--timeLimit 3960s')
     }
 
-    def "use on-demand for retry"() {
+    def "No implicit on-demand for retry"() {
         given:
         final exec = newTestExecutor(
                 [float: [address : addr,
@@ -549,7 +549,7 @@ class FloatGridExecutorTest extends FloatBaseTest {
         final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
 
         then:
-        cmd.join(' ').contains('onDemand=true')
+        ! cmd.join(' ').contains('onDemand=true')
     }
 
     def "use cpu factor"() {
