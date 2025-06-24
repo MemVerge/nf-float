@@ -382,6 +382,16 @@ fi
         return Math.max(ret, 1)
     }
 
+    private static Integer getAccelerator(TaskRun task) {
+        final accelRes = task.config.getAccelerator()
+
+        if (accelRes == null) {
+            return 0
+        }
+
+        return Math.max(0, accelRes.request)
+    }
+
     List<String> getSubmitCommandLine(FloatTaskHandler handler, Path scriptFile) {
         final task = handler.task
 
@@ -406,6 +416,10 @@ fi
         int memGiga = Math.max(getMemory(task), cpu * 2)
         int maxMemGiga = (floatConf.maxMemoryFactor * memGiga.doubleValue()).intValue()
         cmd << '--mem' << "${memGiga}:${maxMemGiga}".toString()
+        int accelerator = getAccelerator(task)
+        if (accelerator>0) {
+            cmd << '--gpu-count' << accelerator.toString()
+        }
         cmd << '--job' << getScriptFilePath(handler, scriptFile)
         getEnv(handler).each { key, val ->
             cmd << '--env' << "${key}=${val}".toString()
