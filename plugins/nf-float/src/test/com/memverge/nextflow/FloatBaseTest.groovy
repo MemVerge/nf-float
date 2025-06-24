@@ -107,7 +107,9 @@ class FloatBaseTest extends BaseTest {
         Integer taskID = Integer.parseInt(taskIDStr)
         def realCpu = param.cpu ?: cpu
         def realMem = param.memory ?: mem
-        return [bin, '-a', param.addr ?: addr,
+        return [
+                bin, '-a',
+                param.addr ?: addr,
                 '-u', user,
                 '-p', pass,
                 'submit',
@@ -115,12 +117,14 @@ class FloatBaseTest extends BaseTest {
                 '--image', param.image ?: image,
                 '--cpu', realCpu + ':' + realCpu * FloatConf.DFT_MAX_CPU_FACTOR,
                 '--mem', realMem + ':' + realMem * FloatConf.DFT_MAX_MEM_FACTOR,
+                param.accelerator ? "--gpu-count ${param.accelerator}": null,
                 '--job', script,
                 '--disableRerun',
                 '--customTag', jobID(new TaskId(taskID)),
                 '--customTag', "${FloatConf.NF_SESSION_ID}:uuid-$uuid",
                 '--customTag', "${FloatConf.NF_TASK_NAME}:foo--$taskIDStr-",
                 '--customTag', "${FloatConf.FLOAT_INPUT_SIZE}:0",
-                '--customTag', "${FloatConf.NF_RUN_NAME}:test-run"]
+                '--customTag', "${FloatConf.NF_RUN_NAME}:test-run"
+        ].findAll { it != null }
     }
 }

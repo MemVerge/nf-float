@@ -183,6 +183,48 @@ class FloatGridExecutorTest extends FloatBaseTest {
         cmd.join(' ') == expected.join(' ')
     }
 
+    def "use cpus, memory, accelerator and container"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, 0, new TaskConfig(
+                cpus: 8,
+                memory: '16 GB',
+                accelerator: 4,
+                container: "biocontainers/star"))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+        final expected = submitCmd(
+                cpu: 8,
+                memory: 16,
+                accelerator: 4,
+                image: "biocontainers/star")
+
+        then:
+        cmd.join(' ') == expected.join(' ')
+    }
+
+    def "use cpus, memory, accelerator type and container"() {
+        given:
+        final exec = newTestExecutor()
+        final task = newTask(exec, 0, new TaskConfig(
+                cpus: 8,
+                memory: '16 GB',
+                accelerator: [request: 2, type: 'nvidia-tesla-k80'],
+                container: "biocontainers/star"))
+
+        when:
+        final cmd = exec.getSubmitCommandLine(task, Paths.get(script))
+        final expected = submitCmd(
+                cpu: 8,
+                memory: 16,
+                accelerator: 2,
+                image: "biocontainers/star")
+
+        then:
+        cmd.join(' ') == expected.join(' ')
+    }
+
     def "add common extras"() {
         given:
         final exec = newTestExecutor(
