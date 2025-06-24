@@ -438,9 +438,6 @@ fi
         if (floatConf.extraOptions) {
             cmd << '--extraOptions' << floatConf.extraOptions
         }
-        if (task.config.getAttempt() > 1) {
-            cmd << '--vmPolicy' << '[onDemand=true]'
-        }
         cmd.addAll(getExtra(task))
         log.info "[FLOAT] submit job: ${floatConf.toLogStr(cmd)}"
         return cmd
